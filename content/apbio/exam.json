@@ -1,0 +1,31 @@
+{
+  "slug": "apbio-midterm",
+  "title": "AP Biology Midterm",
+  "subtitle": "Units 0–4 · multiple choice and free response",
+  "subject": "Biology",
+  "icon": "🧬",
+  "assign": "random",
+  "settings": {
+    "sections": [
+      {
+        "id": "s1",
+        "title": "Section I · Multiple choice",
+        "minutes": 90
+      },
+      {
+        "id": "s2",
+        "title": "Section II · Free response",
+        "minutes": 90
+      }
+    ],
+    "tools": {
+      "calc": "both",
+      "notes": true,
+      "highlight": true
+    },
+    "proctor": true,
+    "lockSections": true,
+    "pack": "apbio",
+    "intro": "<p>Two panes: stimulus on the left, question and answers on the right. Free-response subparts each have their own answer box. Tools: calculator, notes, text highlighting, light/dark theme.</p><ul><li>The exam runs in full screen. Leaving full screen or the tab is recorded and shown to your teacher.</li><li>Section I (multiple choice) and Section II (free response) are timed separately, 90 minutes each. You cannot return to Section I once you start Section II. You will be warned at 30, 10, 5 and 1 minutes.</li><li>Time is tracked per question.</li><li>Answers save automatically to your teacher’s dashboard.</li></ul>"
+  }
+}

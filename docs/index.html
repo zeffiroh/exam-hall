@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<title>Sign in · Exam Hall</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<main class="signin">
+  <h1>Join your room</h1>
+  <p class="mut">Enter the room code from your teacher or your access pass.</p>
+  <div class="card">
+    <div class="tabs" role="tablist"><button id="tS" class="on" role="tab">Student</button><button id="tT" role="tab">Teacher</button></div>
+    <form id="f" novalidate>
+      <div id="fs">
+        <label class="field">Full name<input id="nm" autocomplete="name" required></label>
+        <label class="field">Email<input id="em" type="email" autocomplete="email" required></label>
+        <label class="field">Room code<input id="cd" autocomplete="off" autocapitalize="off" spellcheck="false" required></label>
+      </div>
+      <div id="ft" hidden>
+        <label class="field">Teacher password<input id="pw" type="password" autocomplete="current-password"></label>
+      </div>
+      <p class="err" id="er" role="alert"></p>
+      <button class="pri" id="go" style="width:100%;justify-content:center">Continue</button>
+    </form>
+  </div>
+  <p class="mut" style="text-align:center">No code yet? <a href="pass.html">Get an access pass</a></p>
+</main>
+<script src="js/config.js"></script>
+<script type="module">
+import { $, el, topbar, user, setUser, S, teacherConnFor, teacherSql } from './js/core.js';
+topbar();
+const u = user();
+if (u && u.role === 'student' && u.code) location.href = 'student.html';
+if (u && u.role === 'teacher' && sessionStorage.apc) location.href = 'dashboard.html';
+let role = 'student';
+const pick = r => { role = r; $('#fs').hidden = r !== 'student'; $('#ft').hidden = r !== 'teacher'; $('#tS').classList.toggle('on', r === 'student'); $('#tT').classList.toggle('on', r === 'teacher'); $('#er').textContent = ''; };
+$('#tS').onclick = () => pick('student');
+$('#tT').onclick = () => pick('teacher');
+const q = new URLSearchParams(location.search);
+if (q.get('room')) $('#cd').value = q.get('room');
+if (q.has('teacher')) pick('teacher');
+$('#f').onsubmit = async e => {
+  e.preventDefault();
+  const go = $('#go'); go.disabled = true; $('#er').textContent = '';
+  try {
+    if (role === 'teacher') {
+      const pw = $('#pw').value;
+      if (!pw) throw new Error('Enter the teacher password.');
+      sessionStorage.apc = teacherConnFor(pw);
+      try { const t = await teacherSql(); await t`select 1 from exam.rooms limit 1`; }
+      catch (x) { sessionStorage.removeItem('apc'); throw new Error(/password/i.test(x.message) ? 'Wrong teacher password.' : x.message); }
+      setUser({ role: 'teacher' });
+      location.href = 'dashboard.html';
+    } else {
+      const name = $('#nm').value.trim(), email = $('#em').value.trim().toLowerCase(), code = $('#cd').value.trim();
+      if (!name) throw new Error('Enter your full name.');
+      if (!/^\S+@\S+\.\S+$/.test(email)) throw new Error('Enter a valid email address.');
+      if (!code) throw new Error('Enter the room code.');
+      const r = await S.join(code);
+      setUser({ role: 'student', name, email, code, room: r.room.title });
+      location.href = 'student.html';
+    }
+  } catch (x) { $('#er').textContent = /room code/i.test(x.message) ? 'That room code was not found.' : x.message; go.disabled = false; }
+};
+</script>
+</body>
+</html>

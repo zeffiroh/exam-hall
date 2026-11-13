@@ -1,0 +1,49 @@
+{
+ "exams": [
+  {
+   "slug": "apbio-midterm",
+   "title": "AP Biology Midterm",
+   "subtitle": "Units 0–4 · multiple choice and free response",
+   "subject": "Biology",
+   "icon": "🧬",
+   "sets": 1,
+   "questions": 47,
+   "perSet": 47,
+   "minutes": 180,
+   "types": {
+    "mcq": 40,
+    "free": 7
+   },
+   "units": [
+    "Olympiad",
+    "Unit 2",
+    "Unit 4",
+    "Unit 3",
+    "Unit 1",
+    "Unit 0",
+    "Unit 1/2",
+    "Cross-unit"
+   ]
+  },
+  {
+   "slug": "mini-inmo",
+   "title": "Mini INMO",
+   "subtitle": "Indian National Mathematical Olympiad style · 4 problems · 3 hours",
+   "subject": "Mathematics",
+   "icon": "∑",
+   "sets": 3,
+   "questions": 12,
+   "perSet": 4,
+   "minutes": 180,
+   "types": {
+    "free": 12
+   },
+   "units": []
+  }
+ ],
+ "totals": {
+  "exams": 2,
+  "sets": 4,
+  "questions": 59
+ }
+}

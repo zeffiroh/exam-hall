@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<title>Your access code · Exam Hall</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<main class="signin unlock">
+  <div class="card" id="box"><p class="mut" role="status">Checking your payment…</p></div>
+</main>
+<script src="js/config.js"></script>
+<script type="module">
+import { $, el, topbar, studentSql } from './js/core.js';
+topbar();
+const box = $('#box');
+const qs = new URLSearchParams(location.search);
+const PAY = /^(pay_[A-Za-z0-9]{10,30}|cs_(test|live)_[A-Za-z0-9]{20,240})$/;
+
+function show(code, room) {
+  const copy = el('button', { text: 'Copy', onclick: async () => { try { await navigator.clipboard.writeText(code); copy.textContent = 'Copied'; } catch { copy.textContent = 'Select and copy'; } } });
+  box.replaceChildren(
+    el('p', { class: 'kick', text: 'Thank you for your support' }),
+    el('h1', { text: 'Here is your access code' }),
+    el('div', { class: 'code' }, el('code', { text: code }), copy),
+    el('p', { class: 'mut', text: 'Save it somewhere safe. Sign in with it' + (room ? ' to “' + room + '”' : '') + ' on any device. If you lose it, come back here and enter your payment ID again.' }),
+    el('a', { class: 'btn pri big', href: 'index.html?room=' + encodeURIComponent(code), text: 'Start studying' }));
+}
+
+function ask(msg) {
+  const input = el('input', { class: 'single', placeholder: 'pay_XXXXXXXXXXXXXX', autocomplete: 'off', spellcheck: 'false', 'aria-label': 'Payment ID' });
+  const err = el('p', { class: 'err', role: 'alert', text: msg || '' });
+  const form = el('form', null, el('label', { class: 'field' }, 'Payment ID', input), err,
+    el('button', { class: 'pri big', type: 'submit', text: 'Get my code', style: 'width:100%;justify-content:center' }));
+  form.addEventListener('submit', e => { e.preventDefault(); claim(input.value.trim()); });
+  box.replaceChildren(el('p', { class: 'kick', text: 'Access pass' }), el('h1', { text: 'Get your access code' }),
+    el('p', { text: 'Enter the payment ID from your Razorpay receipt email. It starts with pay_.' }), form,
+    el('p', { class: 'mut' }, 'Haven’t paid yet? ', el('a', { href: 'pass.html#price', text: 'Pay what you want' })));
+  input.focus();
+}
+
+async function claim(id) {
+  if (!PAY.test(id)) { ask('That doesn’t look like a payment ID. Copy it exactly from your receipt; it starts with pay_.'); return; }
+  const key = 'eh-code:' + id;
+  let saved = null;
+  try { saved = JSON.parse(localStorage[key] || 'null'); } catch {}
+  if (saved) { show(saved.code, saved.room); return; }
+  box.replaceChildren(el('p', { class: 'mut', role: 'status', text: 'Checking your payment…' }));
+  try {
+    const q = await studentSql();
+    const [r] = await q`select exam.claim_code(${id}, ${null}) as r`;
+    try { localStorage[key] = JSON.stringify(r.r); } catch {}
+    history.replaceState(null, '', 'unlock.html?razorpay_payment_id=' + encodeURIComponent(id));
+    show(r.r.code, r.r.room);
+  } catch (e) { ask((e.message || String(e)) + ' If you were charged, reply to your receipt email and you’ll get a code by hand.'); }
+}
+
+const id = qs.get('razorpay_payment_id') || qs.get('payment_id') || qs.get('session_id') || '';
+if (id) claim(id); else ask();
+</script>
+</body>
+</html>

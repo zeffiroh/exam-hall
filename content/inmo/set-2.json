@@ -1,0 +1,300 @@
+{
+ "cards": [
+  {
+   "id": "P1",
+   "sec": "p",
+   "type": "free",
+   "title": "Problem 1 · Algebra",
+   "stim": "",
+   "figs": [],
+   "stem": "<p>Find all functions $f:\\mathbb R\\to\\mathbb R$ such that\n$$f\\bigl(x+y\\,f(x)\\bigr)=f(x)+x\\,f(y)$$\nfor all real numbers $x,y$.</p>",
+   "subs": [
+    {
+     "k": "p",
+     "html": "Write a complete proof.",
+     "pts": 17,
+     "tools": [
+      "math"
+     ],
+     "key": {
+      "kind": "manual",
+      "max": 17,
+      "rationale": "<p><b>Answer.</b> $f\\equiv0$ and $f(x)=x$. Both clearly work: $0=0$, and $x+yx=x+xy$.</p>\n<p><b>1. $f(0)=0$.</b> Put $x=0$: $f(y f(0))=f(0)$ for all $y$. If $c=f(0)\\ne0$, then $yc$ runs over all of $\\mathbb R$, so $f\\equiv c$. The equation then reads $c=c+xc$ for all $x$, forcing $c=0$, a contradiction.</p>\n<p><b>2. Zeros.</b> Suppose $f(x_0)=0$ for some $x_0\\ne0$. Putting $x=x_0$ gives $f(x_0)=f(x_0)+x_0f(y)$, so $f\\equiv0$. From now on assume $f\\not\\equiv0$. Then $f(x)\\ne0$ for every $x\\ne0$.</p>\n<p><b>3. $f(1)=1$.</b> Let $a=f(1)\\ne0$. Putting $x=1$ gives $f(1+ay)=a+f(y)$. If $a\\ne1$, take $y=\\frac1{1-a}$. Then $1+ay=\\frac1{1-a}=y$, so $f(y)=a+f(y)$, i.e. $a=0$, a contradiction. Hence $a=1$ and\n$$f(y+1)=f(y)+1\\quad\\text{for all }y.$$</p>\n<p><b>4. A translation rule.</b> Replace $y$ by $y+1$ in the equation and use step 3:\n$$f\\bigl(x+yf(x)+f(x)\\bigr)=f(x)+xf(y)+x=f\\bigl(x+yf(x)\\bigr)+x .$$\nFix $x\\ne0$. Since $f(x)\\ne0$, $z=x+yf(x)$ takes every real value as $y$ varies. Hence\n$$f\\bigl(z+f(x)\\bigr)=f(z)+x\\qquad\\text{for all }z\\in\\mathbb R,$$\nand this is trivially true for $x=0$ as well.</p>\n<p><b>5. Additivity.</b> With $z=0$ we get $f(f(x))=x$, so $f$ is a bijection. Writing $w=f(x)$ (which takes every real value), step 4 becomes $f(z+w)=f(z)+f(w)$. So $f$ is additive.</p>\n<p><b>6. Multiplicativity.</b> Using additivity, the original equation becomes $f(x)+f(yf(x))=f(x)+xf(y)$, i.e. $f(yf(x))=xf(y)$. Put $x=f(t)$ and use $f(f(t))=t$ to get $f(yt)=f(t)f(y)$ for all $y,t$.</p>\n<p><b>7. Conclusion.</b> $f(u^2)=f(u)^2\\ge0$, so $f\\ge0$ on $[0,\\infty)$. By additivity, $u\\ge v$ gives $f(u)-f(v)=f(u-v)\\ge0$, so $f$ is non-decreasing. An additive function satisfies $f(r)=rf(1)=r$ for all rationals $r$. For real $x$ and rationals $r\\lt x\\lt s$, monotonicity gives $r\\le f(x)\\le s$. Letting $r,s\\to x$ gives $f(x)=x$. $\\blacksquare$</p>",
+      "rubric": [
+       {
+        "pts": 2,
+        "desc": "Proves $f(0)=0$."
+       },
+       {
+        "pts": 2,
+        "desc": "Shows that $f(x_0)=0$ for some $x_0\\ne0$ forces $f\\equiv0$."
+       },
+       {
+        "pts": 3,
+        "desc": "Proves $f(1)=1$ (e.g. by the fixed point $y=1/(1-a)$), hence $f(y+1)=f(y)+1$."
+       },
+       {
+        "pts": 4,
+        "desc": "Derives $f(z+f(x))=f(z)+x$ for all $z$, with the surjectivity of $z=x+yf(x)$ justified."
+       },
+       {
+        "pts": 2,
+        "desc": "Deduces $f(f(x))=x$ and that $f$ is additive."
+       },
+       {
+        "pts": 2,
+        "desc": "Deduces that $f$ is multiplicative."
+       },
+       {
+        "pts": 2,
+        "desc": "Concludes $f(x)=x$ (monotone + additive) and verifies both solutions. (Solutions found without proof: 1 mark total.)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "P2",
+   "sec": "p",
+   "type": "free",
+   "title": "Problem 2 · Number Theory",
+   "stim": "",
+   "figs": [],
+   "stem": "<p>Find all pairs $(m,n)$ of positive integers such that both $m^2+3n$ and $n^2+3m$ are perfect squares.</p>",
+   "subs": [
+    {
+     "k": "p",
+     "html": "Write a complete proof.",
+     "pts": 17,
+     "tools": [
+      "math"
+     ],
+     "key": {
+      "kind": "manual",
+      "max": 17,
+      "rationale": "<p><b>Answer.</b> $(1,1)$, $(11,16)$, $(16,11)$.</p>\n<p>Check: $1+3=4$; $11^2+48=169=13^2$ and $16^2+33=289=17^2$.</p>\n<p>The conditions are symmetric, so assume $m\\ge n$. Then\n$$m^2\\lt m^2+3n\\le m^2+3m\\lt m^2+4m+4=(m+2)^2,$$\nso $m^2+3n=(m+1)^2$, i.e. $3n=2m+1$. Hence $n$ is odd and $m=\\frac{3n-1}2$ (and indeed $m\\ge n$).</p>\n<p>Now $n^2+3m=n^2+\\frac{9n-3}2=k^2$ for some positive integer $k$. Multiply by $16$:\n$$16n^2+72n-24=16k^2\\iff (4n+9)^2-(4k)^2=105\\iff (4n+9-4k)(4n+9+4k)=105 .$$\nBoth factors are positive (their product and the second factor are positive). With $d=4n+9-4k\\lt e=4n+9+4k$, $de=105$, we have $4n+9=\\frac{d+e}2$ and $(d,e)\\in\\{(1,105),(3,35),(5,21),(7,15)\\}$:</p>\n<ul><li>$(1,105)$: $4n+9=53$, so $n=11$, $k=13$, $m=16$.</li>\n<li>$(3,35)$: $4n+9=19$, not possible in integers.</li>\n<li>$(5,21)$: $4n+9=13$, so $n=1$, $k=2$, $m=1$.</li>\n<li>$(7,15)$: $4n+9=11$, not possible in integers.</li></ul>\n<p>So with $m\\ge n$ the solutions are $(1,1)$ and $(16,11)$. By symmetry the full answer is $(1,1),(11,16),(16,11)$. $\\blacksquare$</p>",
+      "rubric": [
+       {
+        "pts": 5,
+        "desc": "Assumes $m\\ge n$ (by symmetry) and squeezes $m^2\\lt m^2+3n\\lt (m+2)^2$ to get $3n=2m+1$."
+       },
+       {
+        "pts": 4,
+        "desc": "Substitutes and reduces to a difference of squares, e.g. $(4n+9)^2-(4k)^2=105$ (or an equivalent bounded search that is fully justified)."
+       },
+       {
+        "pts": 5,
+        "desc": "Complete factor analysis, giving exactly $n=1$ and $n=11$."
+       },
+       {
+        "pts": 3,
+        "desc": "States all three pairs, including the symmetric one, and verifies them. (Correct answer with verification but no proof: 2.)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "P3",
+   "sec": "p",
+   "type": "free",
+   "title": "Problem 3 · Combinatorics",
+   "stim": "",
+   "figs": [],
+   "stem": "<p>Let $n\\ge2$ be an integer. There are $n$ coins in a row, labelled $1,2,\\dots,n$ from left to right, all showing heads. A <i>move</i> consists of choosing an index $i$ with $1\\le i\\le n-1$ such that coin $i$ shows heads, and turning over both coins $i$ and $i+1$. Moves are made one after another until no move is possible.</p>\n<p>(The two parts below are marked together as one proof.)</p>\n<p>(a) Prove that the process always stops after finitely many moves.</p>\n<p>(b) Determine, in terms of $n$, all possible values of the total number of moves.</p>",
+   "subs": [
+    {
+     "k": "p",
+     "html": "Write a complete proof.",
+     "pts": 17,
+     "tools": [
+      "math"
+     ],
+     "key": {
+      "kind": "manual",
+      "max": 17,
+      "rationale": "<p><b>Answer.</b> Exactly the integers $m$ with\n$$\\left\\lfloor \\tfrac n2\\right\\rfloor\\le m\\le \\binom n2\\quad\\text{and}\\quad m\\equiv\\binom n2\\pmod 2 .$$</p>\n<p><b>A weight.</b> Let $W=\\sum (n-i)$ over all coins $i$ showing heads. Consider a move at $i$.</p>\n<ul><li>If coin $i+1$ shows tails, the head moves from $i$ to $i+1$ and $W$ drops by exactly $1$.</li>\n<li>If coin $i+1$ shows heads, both heads disappear (an <i>annihilation</i>) and $W$ drops by $(n-i)+(n-i-1)=1+2j$, where $j=n-1-i\\ge0$.</li></ul>\n<p>(a) $W$ is a non-negative integer that strictly decreases, so the process stops. It stops exactly when no coin among $1,\\dots,n-1$ shows heads, i.e. exactly when $W=0$.</p>\n<p><b>Counting.</b> Initially $W=\\sum_{i=1}^n(n-i)=\\binom n2$. If the process takes $m$ moves and the annihilations have parameters $j_1,\\dots,j_a$, adding up the drops gives\n$$\\binom n2=m+2(j_1+\\dots+j_a),\\qquad\\text{so}\\qquad m=\\binom n2-2\\sum_t j_t .$$\nHence $m\\le\\binom n2$ and $m\\equiv\\binom n2\\pmod2$.</p>\n<p><b>Lower bound.</b> The number of heads changes only by annihilations, each removing $2$ heads. At the end at most one head remains (on coin $n$). So $2a\\ge n-1$ and $m\\ge a\\ge\\lceil\\frac{n-1}2\\rceil=\\lfloor\\frac n2\\rfloor$.</p>\n<p><b>Construction.</b> Let $J\\subseteq\\{1,\\dots,n-2\\}$ contain no two consecutive integers. Start by making, for each $j\\in J$, the move at $i=n-1-j$. These moves annihilate the pairs of coins $\\{n-1-j,\\,n-j\\}$, which are disjoint and all heads initially, so each move is legal. After that, always move at the <i>largest</i> admissible $i$. Under this rule, if coin $i+1$ shows heads then $i+1=n$ (otherwise $i+1$ would be a larger admissible index), so every later annihilation has $j=0$. By the counting formula the total is $m=\\binom n2-2\\sum_{j\\in J}j$.</p>\n<p><b>Lemma.</b> For $N\\ge0$ let $M(N)=N+(N-2)+(N-4)+\\cdots$ (positive terms only). Every integer $0\\le s\\le M(N)$ is the sum of a subset of $\\{1,\\dots,N\\}$ with no two consecutive elements.</p>\n<p><i>Proof.</i> Induction on $N$. The cases $N=0,1$ are clear. For $N\\ge2$: if $s\\le M(N-1)$, use the induction hypothesis for $N-1$. Otherwise $s\\gt M(N-1)\\ge N-1$, so $s\\ge N$ and $0\\le s-N\\le M(N)-N=M(N-2)$. Write $s-N$ using $\\{1,\\dots,N-2\\}$ and add the element $N$. $\\square$</p>\n<p>With $N=n-2$, the attainable values of $\\sum_{j\\in J}j$ are all integers in $[0,M(n-2)]$. So the attainable $m$ are all numbers $\\binom n2-2s$, $0\\le s\\le M(n-2)$. Finally, $\\binom n2-2M(n-2)=\\lfloor n/2\\rfloor$. For $n=2r$, $M=r(r-1)$ and $r(2r-1)-2r(r-1)=r$. For $n=2r+1$, $M=r^2$ and $r(2r+1)-2r^2=r$. This is exactly the claimed set. $\\blacksquare$</p>",
+      "rubric": [
+       {
+        "pts": 2,
+        "desc": "Part (a): a correct monovariant (e.g. $W$) proving termination."
+       },
+       {
+        "pts": 3,
+        "desc": "Exact relation $m=\\binom n2-2\\sum j_t$, or equivalently the bound $m\\le\\binom n2$ together with the parity invariant $m\\equiv\\binom n2\\pmod2$."
+       },
+       {
+        "pts": 2,
+        "desc": "Shows $\\binom n2$ moves are attainable (e.g. always move the rightmost admissible head)."
+       },
+       {
+        "pts": 3,
+        "desc": "Proves $m\\ge\\lfloor n/2\\rfloor$."
+       },
+       {
+        "pts": 2,
+        "desc": "Shows $\\lfloor n/2\\rfloor$ moves are attainable."
+       },
+       {
+        "pts": 5,
+        "desc": "Shows that every intermediate value with the right parity is attainable (construction plus a complete argument that all values are covered). Only max and min, with bounds: at most 12/17."
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "P4",
+   "sec": "p",
+   "type": "free",
+   "title": "Problem 4 · Geometry",
+   "stim": "<div data-fig=\"0\"></div>",
+   "figs": [
+    {
+     "t": "geo",
+     "w": 380,
+     "h": 290,
+     "pts": {
+      "A": [
+       1.5,
+       4
+      ],
+      "B": [
+       0,
+       0
+      ],
+      "C": [
+       6,
+       0
+      ],
+      "I": [
+       2.126,
+       1.473
+      ],
+      "D": [
+       2.126,
+       0
+      ],
+      "E": [
+       3.104,
+       2.574
+      ],
+      "F": [
+       0.746,
+       1.99
+      ],
+      "K": [
+       1.582,
+       2.197
+      ]
+     },
+     "items": [
+      [
+       "poly",
+       "A",
+       "B",
+       "C"
+      ],
+      [
+       "incircle",
+       "A",
+       "B",
+       "C"
+      ],
+      [
+       "seg",
+       "E",
+       "F"
+      ],
+      [
+       "seg",
+       "D",
+       "K"
+      ],
+      [
+       "right",
+       "D",
+       "K",
+       "E"
+      ],
+      [
+       "dashed",
+       "K",
+       "B"
+      ],
+      [
+       "dashed",
+       "K",
+       "C"
+      ],
+      [
+       "dot",
+       "I"
+      ],
+      [
+       "dot",
+       "K"
+      ]
+     ],
+     "labels": {
+      "A": "n",
+      "B": "sw",
+      "C": "se",
+      "D": "s",
+      "E": "ne",
+      "F": "nw",
+      "K": "n",
+      "I": "e"
+     },
+     "cap": "The incircle touches the sides at D, E, F; K is the foot of the perpendicular from D to EF."
+    }
+   ],
+   "stem": "<p>Let $ABC$ be a triangle whose incircle touches $BC$, $CA$, $AB$ at $D$, $E$, $F$ respectively. Let $K$ be the foot of the perpendicular from $D$ to the line $EF$.</p>\n<p>(i) Prove that $KD$ bisects $\\angle BKC$.</p>\n<p>(ii) Suppose moreover that $AB\\neq AC$, so that the lines $EF$ and $BC$ meet at a point $T$. Prove that $TB\\cdot DC=TC\\cdot DB$.</p>",
+   "subs": [
+    {
+     "k": "p",
+     "html": "Write a complete proof.",
+     "pts": 17,
+     "tools": [
+      "math",
+      "geo"
+     ],
+     "key": {
+      "kind": "manual",
+      "max": 17,
+      "rationale": "<p>Write $A,B,C$ also for the angles of the triangle.</p>\n<p><b>Angles of $DEF$.</b> Since $AE=AF$, $\\angle AFE=\\angle AEF=90^\\circ-\\frac A2$. By the tangent–chord angle, $\\angle DFE=\\angle CDE=90^\\circ-\\frac C2$ (triangle $CDE$ is isosceles with $CD=CE$). Similarly $\\angle DEF=\\angle BDF=90^\\circ-\\frac B2$. All angles of $DEF$ are acute, so $K$ lies strictly inside segment $EF$.</p>\n<p><b>Lengths.</b> In the isosceles triangle $BDF$ ($BD=BF$, apex angle $B$), $DF=2BD\\sin\\frac B2$. Likewise $DE=2CD\\sin\\frac C2$. In the right triangles $DKF$ and $DKE$:\n$$FK=DF\\cos\\angle DFE=2BD\\sin\\tfrac B2\\sin\\tfrac C2,\\qquad EK=DE\\cos\\angle DEF=2CD\\sin\\tfrac C2\\sin\\tfrac B2 .$$\nHence $\\dfrac{FK}{EK}=\\dfrac{BD}{CD}=\\dfrac{BF}{CE}$.</p>\n<p><b>Similar triangles.</b> As $F$ lies between $A$ and $B$ and $K$ lies on segment $FE$, $\\angle BFK=180^\\circ-\\angle AFE=90^\\circ+\\frac A2$. In the same way $\\angle CEK=90^\\circ+\\frac A2$. Together with $BF:FK=CE:EK$, the SAS criterion gives $\\triangle BFK\\sim\\triangle CEK$, so\n$$\\frac{KB}{KC}=\\frac{BF}{CE}=\\frac{DB}{DC}.$$</p>\n<p><b>(i)</b> $K$ does not lie on $BC$, and $D$ is the point of segment $BC$ with $DB:DC=KB:KC$. By the angle bisector theorem the internal bisector of $\\angle BKC$ meets $BC$ at the unique point of the segment dividing it in the ratio $KB:KC$. That point is $D$, so $KD$ bisects $\\angle BKC$.</p>\n<p><b>(ii)</b> The line $EF$ passes through $K$ and is perpendicular to the internal bisector $KD$. So $EF$ is the external bisector of $\\angle BKC$. If $AB\\ne AC$ then $DB=s-b\\ne s-c=DC$, so $KB\\ne KC$, and the external bisector meets line $BC$ at the point $T$ with $TB:TC=KB:KC=DB:DC$. That is, $TB\\cdot DC=TC\\cdot DB$. $\\blacksquare$</p>",
+      "rubric": [
+       {
+        "pts": 2,
+        "desc": "Shows $\\angle BFK=\\angle CEK$ $(=90^\\circ+A/2)$."
+       },
+       {
+        "pts": 3,
+        "desc": "Finds the angles of the contact triangle (or equivalent facts) and justifies that $K$ is on segment $EF$."
+       },
+       {
+        "pts": 4,
+        "desc": "Proves $FK:EK=BF:CE$ $(=BD:CD)$."
+       },
+       {
+        "pts": 3,
+        "desc": "Concludes $\\triangle BFK\\sim\\triangle CEK$ and hence $KB:KC=DB:DC$."
+       },
+       {
+        "pts": 2,
+        "desc": "Finishes (i) via the angle bisector theorem (or an equivalent angle argument)."
+       },
+       {
+        "pts": 3,
+        "desc": "Part (ii): identifies $EF$ as the external bisector of $\\angle BKC$ and concludes $TB:TC=DB:DC$ (a proof via Menelaus/Ceva is also fine)."
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}

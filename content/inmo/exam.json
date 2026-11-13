@@ -1,0 +1,25 @@
+{
+  "slug": "mini-inmo",
+  "title": "Mini INMO",
+  "subtitle": "Indian National Mathematical Olympiad style · 4 problems · 3 hours",
+  "subject": "Mathematics",
+  "icon": "∑",
+  "assign": "random",
+  "settings": {
+    "sections": [
+      {
+        "id": "p",
+        "title": "Problems",
+        "minutes": 180
+      }
+    ],
+    "tools": {
+      "calc": false,
+      "notes": true,
+      "highlight": false
+    },
+    "proctor": true,
+    "lockSections": false,
+    "intro": "<h2>Mini INMO</h2><p>This is a short practice paper modelled on the Indian National Mathematical Olympiad (INMO). The real INMO has six problems of 17 marks each (102 in total) and lasts about four and a half hours. This mini paper has <b>four problems in 3 hours</b>: one each from algebra, number theory, combinatorics and geometry.</p><ul><li>All problems are <b>proof-based</b>. A correct final answer alone earns very little. You must give a complete, rigorous justification of every claim.</li><li>Each problem carries <b>17 marks</b>. Partial credit is given for substantial progress, so write down your key ideas even if your solution is incomplete.</li><li><b>No calculators</b>, computers or other aids. The syllabus is pre-calculus: no calculus is needed.</li><li>Type your solutions with the <b>Math</b> tool. Write prose with LaTeX between dollar signs, for example <code>$a^2+b^2\\ge 2ab$</code>.</li><li>For diagrams, use the <b>geometry</b> tool (geometry problems) or the <b>isometric grid</b> tool (lattice problems). A diagram is not a proof: state and justify everything in words.</li><li>You may work on the problems in any order and move freely between them. The notes pad is available for rough work and is not marked.</li></ul><p>The exam is proctored. Stay in full-screen mode and do not switch tabs. Good luck!</p>"
+  }
+}

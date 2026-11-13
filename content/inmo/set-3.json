@@ -1,0 +1,316 @@
+{
+ "cards": [
+  {
+   "id": "P1",
+   "sec": "p",
+   "type": "free",
+   "title": "Problem 1 · Algebra",
+   "stim": "",
+   "figs": [],
+   "stem": "<p>Find all polynomials $P(x)$ with real coefficients such that\n$$P(x^2-2)=P(x)^2-2\\qquad\\text{for all real }x.$$</p>",
+   "subs": [
+    {
+     "k": "p",
+     "html": "Write a complete proof.",
+     "pts": 17,
+     "tools": [
+      "math"
+     ],
+     "key": {
+      "kind": "manual",
+      "max": 17,
+      "rationale": "<p><b>Answer.</b> The constants $P\\equiv2$ and $P\\equiv-1$, and for each $n\\ge1$ the polynomial $P_n$ given by\n$$P_0=2,\\quad P_1=x,\\quad P_{k+1}=xP_k-P_{k-1}\\qquad(\\text{so }P_2=x^2-2,\\ P_3=x^3-3x,\\ \\dots),$$\nwhich is characterised by $P_n\\!\\left(t+\\tfrac1t\\right)=t^n+t^{-n}$, equivalently $P_n(2\\cos\\theta)=2\\cos n\\theta$.</p>\n<p><b>Constants.</b> $P\\equiv c$ works iff $c=c^2-2$, i.e. $c\\in\\{2,-1\\}$.</p>\n<p><b>Leading coefficient.</b> Let $\\deg P=n\\ge1$ with leading coefficient $c$. Comparing the coefficients of $x^{2n}$ gives $c=c^2$, so $c=1$.</p>\n<p><b>Uniqueness in each degree.</b> Suppose $P\\ne Q$ both satisfy the equation and both have degree $n\\ge1$. Let $R=P-Q\\ne0$, of degree $m\\lt n$ (both are monic). Subtracting the two equations,\n$$R(x^2-2)=P(x)^2-Q(x)^2=R(x)\\,\\bigl(P(x)+Q(x)\\bigr).$$\nThe left side has degree $2m$. On the right, $P+Q$ has leading term $2x^n$, so the degree is $m+n$. Then $2m=m+n$ gives $m=n$, a contradiction. So for each $n\\ge1$ there is at most one solution of degree $n$.</p>\n<p><b>Existence.</b> By induction, $P_n$ is a monic polynomial of degree $n$ with real coefficients and $P_n(t+t^{-1})=t^n+t^{-n}$ for all $t\\ne0$. This holds for $n=0,1$, and\n$$(t+t^{-1})(t^k+t^{-k})-(t^{k-1}+t^{1-k})=t^{k+1}+t^{-k-1}.$$\nFor $x=t+t^{-1}$ we have $x^2-2=t^2+t^{-2}$, so\n$$P_n(x^2-2)=t^{2n}+t^{-2n}=(t^n+t^{-n})^2-2=P_n(x)^2-2 .$$\nAs $t$ ranges over $[1,\\infty)$, $x$ takes every value in $[2,\\infty)$. The two polynomials $P_n(x^2-2)$ and $P_n(x)^2-2$ agree at infinitely many points, so they are identical.</p>\n<p>By uniqueness, $P_n$ is the only solution of degree $n$. Together with the constants $2$ and $-1$, this is the complete list. $\\blacksquare$</p>",
+      "rubric": [
+       {
+        "pts": 2,
+        "desc": "Finds the constant solutions $2$ and $-1$."
+       },
+       {
+        "pts": 3,
+        "desc": "Shows that a non-constant solution is monic."
+       },
+       {
+        "pts": 6,
+        "desc": "Proves that there is at most one solution of each degree $n\\ge1$ (e.g. via $R(x^2-2)=R(x)(P+Q)$ and a degree comparison)."
+       },
+       {
+        "pts": 4,
+        "desc": "Exhibits a solution of every degree (Chebyshev-type $P_n$ with $P_n(t+1/t)=t^n+t^{-n}$ or $P_n(2\\cos\\theta)=2\\cos n\\theta$) and proves it works."
+       },
+       {
+        "pts": 2,
+        "desc": "Justifies the identity for all real $x$ (polynomial identity) and states the complete answer. (Listing $x,\\ x^2-2,\\ x^3-3x$ without the general family: at most 3 total for the answer.)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "P2",
+   "sec": "p",
+   "type": "free",
+   "title": "Problem 2 · Number Theory",
+   "stim": "",
+   "figs": [],
+   "stem": "<p>Find all positive integers $n$ with the following property: for every positive divisor $d$ of $n$, the number $d+2$ divides $n+2$.</p>",
+   "subs": [
+    {
+     "k": "p",
+     "html": "Write a complete proof.",
+     "pts": 17,
+     "tools": [
+      "math"
+     ],
+     "key": {
+      "kind": "manual",
+      "max": 17,
+      "rationale": "<p><b>Answer.</b> $n=1$ and all primes $n\\equiv1\\pmod 3$.</p>\n<p><b>These work.</b> For $n=1$ the only divisor is $1$, and $3\\mid3$. For a prime $p\\equiv1\\pmod3$ the divisors are $1$ and $p$: $3\\mid p+2$, and $p+2\\mid p+2$.</p>\n<p><b>Necessity for primes.</b> Taking $d=1$ always gives $3\\mid n+2$, i.e. $n\\equiv1\\pmod 3$. In particular a prime solution must be $\\equiv1\\pmod3$.</p>\n<p><b>No composite solutions.</b> Let $n$ be composite with smallest prime factor $p$, and put $m=n/p$. Then $m\\gt 1$ and every prime factor of $m$ is at least $p$, so $m\\ge p$. Taking $d=m$:\n$$m+2\\ \\Big|\\ (n+2)-p(m+2)=2-2p,\\qquad\\text{so}\\qquad m+2\\mid 2p-2 .$$\nHere $2p-2\\gt 0$, and $2(m+2)\\ge2p+4\\gt 2p-2$. So the quotient $\\frac{2p-2}{m+2}$ is a positive integer less than $2$, hence $m+2=2p-2$, i.e. $m=2(p-2)$.</p>\n<p>Since $m\\gt 1$ we get $p\\ge3$, and then $2\\mid m\\mid n$. This contradicts $p$ being the smallest prime factor of $n$ (it would have to be $2$). So no composite $n$ works. $\\blacksquare$</p>",
+      "rubric": [
+       {
+        "pts": 2,
+        "desc": "Verifies that $n=1$ and primes $p\\equiv1\\pmod 3$ satisfy the condition."
+       },
+       {
+        "pts": 2,
+        "desc": "Uses $d=1$ to get $n\\equiv1\\pmod3$, which settles the prime case."
+       },
+       {
+        "pts": 5,
+        "desc": "For composite $n$, chooses a good divisor (e.g. $d=n/p$ with $p$ the least prime factor) and derives $n/p+2\\mid 2p-2$."
+       },
+       {
+        "pts": 3,
+        "desc": "Uses size ($n/p\\ge p$) to force $n/p+2=2p-2$."
+       },
+       {
+        "pts": 5,
+        "desc": "Reaches a contradiction (parity / minimality of $p$), completing the proof that composites fail."
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "P3",
+   "sec": "p",
+   "type": "free",
+   "title": "Problem 3 · Combinatorics",
+   "stim": "",
+   "figs": [],
+   "stem": "<p>Let $n\\ge3$ be an integer. There are $n$ lamps arranged around a circle, and initially exactly one of them is on. A <i>move</i> consists of choosing a lamp that is <b>on</b> and toggling each of its two neighbours (on becomes off and off becomes on). The chosen lamp itself does not change.</p>\n<p>Determine all $n$ for which it is possible, after finitely many moves, to have all $n$ lamps on.</p>",
+   "subs": [
+    {
+     "k": "p",
+     "html": "Write a complete proof.",
+     "pts": 17,
+     "tools": [
+      "math"
+     ],
+     "key": {
+      "kind": "manual",
+      "max": 17,
+      "rationale": "<p><b>Answer.</b> Exactly the odd $n$.</p>\n<p>Number the lamps $0,1,\\dots,n-1$ around the circle (indices mod $n$), with lamp $0$ on initially.</p>\n<p><b>$n$ even is impossible.</b> Colour the lamps alternately white (even index) and black (odd index), which is consistent around the circle because $n$ is even. A move at lamp $i$ toggles lamps $i-1$ and $i+1$, which have the same colour. So the number of lit lamps of each colour changes by $-2$, $0$ or $+2$, and the parity of the number of lit white lamps and of lit black lamps never changes. Initially $1$ white and $0$ black lamps are lit. With all lamps on, $n/2$ lamps of each colour are lit, so we would need $n/2$ to be both odd and even. Impossible.</p>\n<p><b>$n$ odd is possible.</b> Call a set of $L$ consecutive lit lamps, with all other lamps off, a <i>block of length $L$</i>. The initial position is a block of length $1$.</p>\n<p><i>Claim.</i> If the lit lamps form the block $a,a+1,\\dots,a+L-1$ with $L$ odd and $L\\le n-2$, then the moves at lamps $a,a+2,a+4,\\dots,a+L-1$ (in this order) turn it into the block $a-1,a,\\dots,a+L$ of length $L+2$.</p>\n<p><i>Proof.</i> Only lamps $a+1,a+3,\\dots,a+L-2$ and $a-1,a+L$ are toggled. The chosen lamps $a,a+2,\\dots,a+L-1$ are never toggled, so each is still on when chosen and every move is legal. Each lamp $a+2t+1$ ($0\\le t\\le\\frac{L-3}2$) lies between two chosen lamps and is toggled twice, so it ends on. Lamps $a-1$ and $a+L$ are toggled once each and come on. Since $L+2\\le n$, these are distinct lamps outside the old block. $\\square$</p>\n<p>Starting from the block $\\{0\\}$ and applying the claim with $L=1,3,5,\\dots,n-2$, we reach a block of length $n$, i.e. all lamps on. (This uses $1+2+\\dots+\\frac{n-1}2=\\frac{n^2-1}8$ moves.) $\\blacksquare$</p>",
+      "rubric": [
+       {
+        "pts": 2,
+        "desc": "Correct answer: all odd $n$."
+       },
+       {
+        "pts": 6,
+        "desc": "Impossibility for even $n$ via a complete invariant (parity of lit lamps in each of the two alternate classes)."
+       },
+       {
+        "pts": 7,
+        "desc": "General construction for every odd $n$ (e.g. growing a block of consecutive lit lamps by $2$). Construction for small cases only: up to 2."
+       },
+       {
+        "pts": 2,
+        "desc": "Verifies legality of the construction (chosen lamps are on; toggled lamps end correctly; no overlap when $L\\le n-2$)."
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "P4",
+   "sec": "p",
+   "type": "free",
+   "title": "Problem 4 · Geometry",
+   "stim": "<div data-fig=\"0\"></div>",
+   "figs": [
+    {
+     "t": "geo",
+     "w": 380,
+     "h": 300,
+     "pts": {
+      "A": [
+       2,
+       4.5
+      ],
+      "B": [
+       0,
+       0
+      ],
+      "C": [
+       6,
+       0
+      ],
+      "D": [
+       2,
+       0
+      ],
+      "X": [
+       0.33,
+       0.742
+      ],
+      "Y": [
+       4.234,
+       1.986
+      ],
+      "P": [
+       -0.234,
+       1.986
+      ],
+      "T": [
+       -2,
+       0
+      ],
+      "N": [
+       2,
+       2.25
+      ]
+     },
+     "items": [
+      [
+       "circum",
+       "A",
+       "B",
+       "C"
+      ],
+      [
+       "poly",
+       "A",
+       "B",
+       "C"
+      ],
+      [
+       "circle",
+       "N",
+       "A"
+      ],
+      [
+       "seg",
+       "A",
+       "D"
+      ],
+      [
+       "right",
+       "A",
+       "D",
+       "C"
+      ],
+      [
+       "dashed",
+       "D",
+       "X"
+      ],
+      [
+       "dashed",
+       "D",
+       "Y"
+      ],
+      [
+       "seg",
+       "T",
+       "B"
+      ],
+      [
+       "seg",
+       "T",
+       "Y"
+      ],
+      [
+       "seg",
+       "T",
+       "A"
+      ],
+      [
+       "dot",
+       "X"
+      ],
+      [
+       "dot",
+       "Y"
+      ],
+      [
+       "dot",
+       "P"
+      ],
+      [
+       "dot",
+       "T"
+      ]
+     ],
+     "labels": {
+      "A": "n",
+      "B": "s",
+      "C": "se",
+      "D": "s",
+      "X": "w",
+      "Y": "ne",
+      "P": "nw",
+      "T": "s",
+      "N": "none"
+     },
+     "cap": "Γ is the circumcircle of ABC and ω is the circle with diameter AD."
+    }
+   ],
+   "stem": "<p>Let $ABC$ be an acute triangle with $AB\\neq AC$ and circumcircle $\\Gamma$, and let $D$ be the foot of the altitude from $A$. The circle $\\omega$ with diameter $AD$ meets the sides $AB$, $AC$ again at $X$, $Y$ respectively, and meets $\\Gamma$ again at $P\\neq A$.</p>\n<p>Prove that the lines $BC$, $XY$ and $AP$ pass through a common point $T$, and that $TD^2=TB\\cdot TC$.</p>",
+   "subs": [
+    {
+     "k": "p",
+     "html": "Write a complete proof.",
+     "pts": 17,
+     "tools": [
+      "math",
+      "geo"
+     ],
+     "key": {
+      "kind": "manual",
+      "max": 17,
+      "rationale": "<p><b>Step 1: $B,C,Y,X$ are concyclic.</b> Since $AD$ is a diameter of $\\omega$, $\\angle AXD=90^\\circ$, so $X$ is the foot of the perpendicular from $D$ to $AB$. It lies on side $AB$ because the angles at $A$ and $B$ are acute. In the right triangle $ABD$ (right angle at $D$), $DX$ is the altitude to the hypotenuse, so $AX\\cdot AB=AD^2$. Similarly $AY\\cdot AC=AD^2$. Hence $AX\\cdot AB=AY\\cdot AC$, and by the converse of the power of a point (with $X\\in AB$, $Y\\in AC$) the points $B,C,Y,X$ lie on a circle $\\sigma$.</p>\n<p><b>Step 2: $XY\\not\\parallel BC$.</b> From the cyclic quadrilateral $BCYX$, $\\angle AXY=\\angle ACB$. If $XY\\parallel BC$, then $\\angle AXY=\\angle ABC$, so $\\angle B=\\angle C$ and $AB=AC$, which is excluded. Let $T=XY\\cap BC$.</p>\n<p><b>Step 3: radical axes.</b> Consider the three circles $\\Gamma$, $\\omega$, $\\sigma$:</p>\n<ul><li>$\\Gamma\\cap\\sigma=\\{B,C\\}$, so their radical axis is line $BC$;</li>\n<li>$\\omega\\cap\\sigma=\\{X,Y\\}$, so their radical axis is line $XY$;</li>\n<li>$\\Gamma\\cap\\omega=\\{A,P\\}$, so their radical axis is line $AP$.</li></ul>\n<p>The point $T$ lies on the first two radical axes, so it has equal power with respect to all three circles. Hence it lies on the third, line $AP$. So $BC$, $XY$, $AP$ concur at $T$.</p>\n<p><b>Step 4: $TD^2=TB\\cdot TC$.</b> The radius of $\\omega$ through $D$ is along $AD\\perp BC$, so $\\omega$ is tangent to $BC$ at $D$. The power of $T$ with respect to $\\omega$ is therefore $TD^2$. Note $T\\ne D$: $D,X,Y$ are three distinct points of $\\omega$, so they are not collinear. With respect to $\\Gamma$, the power of $T$ is the signed product $\\overline{TB}\\cdot\\overline{TC}$. By Step 3 the two powers are equal, so $\\overline{TB}\\cdot\\overline{TC}=TD^2\\gt 0$. Hence $T$ lies outside segment $BC$ and $TD^2=TB\\cdot TC$. $\\blacksquare$</p>",
+      "rubric": [
+       {
+        "pts": 3,
+        "desc": "Proves $AX\\cdot AB=AD^2=AY\\cdot AC$ (or the equivalent angle fact that $XY$ is antiparallel to $BC$)."
+       },
+       {
+        "pts": 3,
+        "desc": "Concludes that $B,C,Y,X$ are concyclic."
+       },
+       {
+        "pts": 2,
+        "desc": "Shows $XY$ is not parallel to $BC$ (uses $AB\\ne AC$)."
+       },
+       {
+        "pts": 5,
+        "desc": "Radical axis argument for the three circles $\\Gamma,\\omega,\\sigma$, giving the concurrence."
+       },
+       {
+        "pts": 2,
+        "desc": "Notes that $\\omega$ is tangent to $BC$ at $D$."
+       },
+       {
+        "pts": 2,
+        "desc": "Deduces $TD^2=TB\\cdot TC$ from equal powers."
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}

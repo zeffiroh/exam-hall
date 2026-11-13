@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 400" font-family="Georgia, 'Times New Roman', serif">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5e0f1b"/><stop offset="1" stop-color="#a3202f"/></linearGradient>
+    <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.6" fill="#fff" opacity=".10"/></pattern>
+  </defs>
+  <rect width="1280" height="400" fill="url(#g)"/>
+  <rect width="1280" height="400" fill="url(#dots)"/>
+  <g transform="translate(96 108)">
+    <rect width="184" height="184" rx="40" fill="#fff" opacity=".1"/>
+    <g transform="translate(20 20) scale(2.25)" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 46V22l18-9 18 9v24"/><path d="M22 46V30M32 46V30M42 46V30M12 48h40"/>
+    </g>
+    <circle cx="92" cy="69" r="7" fill="#ffe36e"/>
+  </g>
+  <text x="336" y="196" fill="#fff" font-size="92" font-weight="700">Exam Hall</text>
+  <text x="340" y="252" fill="#fff" opacity=".85" font-size="30" font-family="system-ui, sans-serif">Real exams. Real timing. Progress you can see.</text>
+  <g font-family="system-ui, sans-serif" font-size="20" fill="#fff">
+    <g transform="translate(340 290)"><rect width="150" height="38" rx="19" fill="#fff" opacity=".14"/><text x="75" y="25" text-anchor="middle">Timed exams</text></g>
+    <g transform="translate(502 290)"><rect width="168" height="38" rx="19" fill="#fff" opacity=".14"/><text x="84" y="25" text-anchor="middle">Progress charts</text></g>
+    <g transform="translate(682 290)"><rect width="140" height="38" rx="19" fill="#fff" opacity=".14"/><text x="70" y="25" text-anchor="middle">Flashcards</text></g>
+    <g transform="translate(834 290)"><rect width="128" height="38" rx="19" fill="#fff" opacity=".14"/><text x="64" y="25" text-anchor="middle">Study DJ</text></g>
+  </g>
+  <g transform="translate(1010 150)" stroke="#ffe36e" stroke-width="6" stroke-linecap="round" opacity=".9">
+    <line x1="0" y1="40" x2="0" y2="60"/><line x1="18" y1="24" x2="18" y2="76"/><line x1="36" y1="6" x2="36" y2="94"/><line x1="54" y1="30" x2="54" y2="70"/><line x1="72" y1="14" x2="72" y2="86"/><line x1="90" y1="34" x2="90" y2="66"/><line x1="108" y1="20" x2="108" y2="80"/><line x1="126" y1="42" x2="126" y2="58"/><line x1="144" y1="28" x2="144" y2="72"/><line x1="162" y1="44" x2="162" y2="56"/>
+  </g>
+</svg>

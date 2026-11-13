@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<title>Get access · Exam Hall</title>
+<meta name="description" content="Full-length timed practice exams with progress charts, mistake flashcards and a study DJ.">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<main class="store">
+  <section class="hero">
+    <div>
+      <p class="kick">Practice exams that feel like the real thing</p>
+      <h1>Sit the exam before the exam.</h1>
+      <p class="lede">Full-length, timed papers with real section rules. Instant marking, model answers, and progress charts that show which units are holding you back.</p>
+      <div class="row"><a class="btn pri big" id="buy" href="#price">Pay what you want</a><a class="btn big" href="index.html">I have a code</a></div>
+      <div class="stats" id="stats"></div>
+    </div>
+    <img src="assets/icon.svg" alt="" class="hero-mark">
+  </section>
+
+  <section class="feats">
+    <div><b>⏱ Real timing</b><span>Timed sections, locked sections, warnings at 30, 10, 5 and 1 minutes.</span></div>
+    <div><b>✅ Instant marking</b><span>Multiple choice marked on submit, with why each wrong option is wrong.</span></div>
+    <div><b>📈 Progress you can see</b><span>Scores over time, unit-by-unit trends, accuracy and time per question.</span></div>
+    <div><b>🃏 Mistake flashcards</b><span>Every miss becomes a card. Export to Anki or print as PDF.</span></div>
+    <div><b>✍️ Real answer tools</b><span>LaTeX math, graphing, tables, geometry and drawing for free response.</span></div>
+    <div><b>🎧 Study DJ</b><span>Search free music and live study radio with a live visualizer.</span></div>
+  </section>
+
+  <h2>What's inside</h2>
+  <div class="grid" id="cat"><p class="mut">Loading exams…</p></div>
+
+  <section class="price card" id="price">
+    <div>
+      <p class="kick">Access pass · pay what you want</p>
+      <div class="amt" id="amt"></div>
+      <p class="mut" id="pnote"></p>
+      <ul>
+        <li>Every exam and every version listed above</li>
+        <li>New exams as they're added</li>
+        <li>Progress reports, flashcards, Anki and PDF export</li>
+        <li>Pay what it's worth to you. Every amount keeps the exams coming</li>
+      </ul>
+    </div>
+    <div class="buybox">
+      <a class="btn pri big" id="pay" target="_top">Pay what you want</a>
+      <p class="hint" id="payhint">Choose any amount. Secure checkout by Razorpay: UPI, cards (Indian and international), netbanking and wallets. Your code appears right after payment.</p>
+      <p class="hint">Already paid? <a href="unlock.html">Enter your payment ID</a> to see your code again.</p>
+    </div>
+  </section>
+
+  <section class="comm" id="comm" hidden>
+    <h2>Join the community</h2>
+    <p class="mut">Share scores, ask for new exams and swap study tips.</p>
+    <div class="row" id="commLinks"></div>
+  </section>
+</main>
+<script src="js/config.js"></script>
+<script type="module">
+import { $, el, CFG, topbar } from './js/core.js';
+topbar('Get access');
+$('#amt').textContent = CFG.price || '';
+$('#pnote').textContent = CFG.priceNote || '';
+const pay = $('#pay');
+if (CFG.payLink) { pay.href = CFG.payLink; }
+else { pay.removeAttribute('href'); pay.setAttribute('aria-disabled', 'true'); pay.classList.add('off'); $('#payhint').textContent = 'Payments open soon. Ask your teacher for a room code in the meantime.'; }
+
+const c = CFG.community || {};
+const badges = [
+  c.reddit && el('a', { class: 'btn big', href: c.reddit, target: '_blank', rel: 'noopener', text: 'Reddit' }),
+  c.discord && el('a', { class: 'btn big', href: c.discord, target: '_blank', rel: 'noopener', text: 'Discord' })
+].filter(Boolean);
+if (badges.length) { $('#comm').hidden = false; $('#commLinks').append(...badges); }
+
+try {
+  const cat = await (await fetch('catalog.json', { cache: 'no-cache' })).json();
+  const t = cat.totals;
+  $('#stats').append(...[[t.exams, 'exams'], [t.sets, 'versions'], [t.questions, 'questions']].map(([n, l]) => el('div', null, el('b', { text: n }), el('span', { text: l }))));
+  $('#cat').replaceChildren(...cat.exams.map(x => el('div', { class: 'card ex' },
+    el('div', { class: 'row' }, el('span', { class: 'exi', text: x.icon, 'aria-hidden': 'true' }), x.subject ? el('span', { class: 'chip', text: x.subject }) : null),
+    el('h3', { text: x.title }),
+    x.subtitle ? el('p', { class: 'mut', text: x.subtitle }) : null,
+    el('div', { class: 'row facts' },
+      el('span', { text: x.sets + (x.sets > 1 ? ' versions' : ' version') }),
+      el('span', { text: x.perSet + ' questions each' }),
+      x.minutes ? el('span', { text: Math.round(x.minutes / 6) / 10 + ' h' }) : null),
+    x.units.length ? el('div', { class: 'units' }, x.units.slice(0, 6).map(u => el('span', { class: 'chip', text: u }))) : null)));
+} catch { $('#cat').replaceChildren(el('p', { class: 'mut', text: 'The exam list could not be loaded.' })); }
+</script>
+</body>
+</html>

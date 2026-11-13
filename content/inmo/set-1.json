@@ -1,0 +1,321 @@
+{
+ "cards": [
+  {
+   "id": "P1",
+   "sec": "p",
+   "type": "free",
+   "title": "Problem 1 · Algebra",
+   "stim": "",
+   "figs": [],
+   "stem": "<p>Let $n\\ge 3$ be an integer and let $a_1,a_2,\\dots,a_n$ be real numbers such that\n$$\\sum_{1\\le i\\lt j\\le n} a_ia_j=\\binom{n}{2}.$$\nProve that\n$$\\sum_{i=1}^{n}\\frac{1}{a_i^2+n-1}\\le 1,$$\nand determine all $n$-tuples $(a_1,\\dots,a_n)$ for which equality holds.</p>",
+   "subs": [
+    {
+     "k": "p",
+     "html": "Write a complete proof.",
+     "pts": 17,
+     "tools": [
+      "math"
+     ],
+     "key": {
+      "kind": "manual",
+      "max": 17,
+      "rationale": "<p><b>Answer.</b> Equality holds exactly for $a_1=\\dots=a_n=1$ and for $a_1=\\dots=a_n=-1$.</p>\n<p><b>Reduction.</b> For each $i$,\n$$\\frac{1}{a_i^2+n-1}=\\frac{1}{n-1}\\left(1-\\frac{a_i^2}{a_i^2+n-1}\\right),$$\nso the claim $\\sum \\frac1{a_i^2+n-1}\\le 1$ is equivalent to $\\frac{1}{n-1}\\left(n-\\sum\\frac{a_i^2}{a_i^2+n-1}\\right)\\le 1$, i.e. to\n$$\\sum_{i=1}^n\\frac{a_i^2}{a_i^2+n-1}\\ge 1.\\qquad(\\ast)$$</p>\n<p><b>Proof of $(\\ast)$.</b> Put $s=\\sum a_i$ and $Q=\\sum a_i^2$. The hypothesis gives $s^2=Q+2\\binom n2=Q+n(n-1)$. By the Cauchy–Schwarz inequality in Engel form (all denominators are positive),\n$$\\sum_{i=1}^n\\frac{a_i^2}{a_i^2+n-1}\\ \\ge\\ \\frac{\\left(\\sum a_i\\right)^2}{\\sum (a_i^2+n-1)}=\\frac{s^2}{Q+n(n-1)}=1 .$$\nThis proves the inequality.</p>\n<p><b>Equality.</b> Equality in Cauchy–Schwarz holds iff $\\dfrac{a_i}{a_i^2+n-1}=\\lambda$ is the same for all $i$. Note $s^2=Q+n(n-1)\\gt 0$, so not all $a_i$ vanish; if $\\lambda=0$ every $a_i=0$, impossible. Hence $\\lambda\\ne0$ and every $a_i$ is a root of $\\lambda t^2-t+\\lambda(n-1)=0$. This quadratic has at most two roots, and if it has two roots $u\\ne v$ then $uv=n-1$.</p>\n<p><i>All $a_i$ equal</i> to some $u$: then $\\binom n2u^2=\\binom n2$, so $u=\\pm1$.</p>\n<p><i>Two distinct values</i>: say $k$ of the $a_i$ equal $u$ and $n-k$ equal $v$, $1\\le k\\le n-1$, $uv=n-1$. Then\n$$\\binom n2=\\sum_{i\\lt j}a_ia_j=\\binom k2u^2+\\binom{n-k}2v^2+k(n-k)uv\\ \\ge\\ k(n-k)(n-1)\\ \\ge\\ (n-1)^2 ,$$\nbecause $k(n-k)\\ge n-1$ for $1\\le k\\le n-1$. But $(n-1)^2\\gt \\frac{n(n-1)}2$ for $n\\ge3$, a contradiction.</p>\n<p>Conversely, for $a_i\\equiv 1$ or $a_i\\equiv -1$ we have $\\sum_{i\\lt j}a_ia_j=\\binom n2$ and $\\sum\\frac1{1+n-1}=1$. So equality holds exactly for these two $n$-tuples. $\\blacksquare$</p>",
+      "rubric": [
+       {
+        "pts": 3,
+        "desc": "Rewrites $\\frac1{a_i^2+n-1}=\\frac1{n-1}\\bigl(1-\\frac{a_i^2}{a_i^2+n-1}\\bigr)$ (or equivalent) and reduces the problem to $\\sum\\frac{a_i^2}{a_i^2+n-1}\\ge1$."
+       },
+       {
+        "pts": 2,
+        "desc": "Uses the hypothesis in the form $(\\sum a_i)^2=\\sum a_i^2+n(n-1)$."
+       },
+       {
+        "pts": 4,
+        "desc": "Correct application of Cauchy–Schwarz / Titu (or another complete method) that proves the inequality."
+       },
+       {
+        "pts": 2,
+        "desc": "Equality condition: $a_i/(a_i^2+n-1)$ constant, with $\\lambda\\neq0$ justified, so each $a_i$ is a root of one quadratic."
+       },
+       {
+        "pts": 4,
+        "desc": "Rules out the case of two distinct values (e.g. via $uv=n-1$ and $\\sum a_ia_j\\ge k(n-k)(n-1)\\gt \\binom n2$)."
+       },
+       {
+        "pts": 2,
+        "desc": "Concludes equality iff all $a_i=1$ or all $a_i=-1$, and checks these work. (Answer without proof of necessity: at most 1 of these 2.)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "P2",
+   "sec": "p",
+   "type": "free",
+   "title": "Problem 2 · Number Theory",
+   "stim": "",
+   "figs": [],
+   "stem": "<p>Find all pairs $(p,q)$ of prime numbers such that $p^2+pq+q^2$ is a perfect square.</p>",
+   "subs": [
+    {
+     "k": "p",
+     "html": "Write a complete proof.",
+     "pts": 17,
+     "tools": [
+      "math"
+     ],
+     "key": {
+      "kind": "manual",
+      "max": 17,
+      "rationale": "<p><b>Answer.</b> $(p,q)=(3,5)$ and $(5,3)$; indeed $9+15+25=49=7^2$.</p>\n<p>Let $p^2+pq+q^2=k^2$ with $k$ a positive integer. Multiplying by $4$,\n$$4k^2=(2p+q)^2+3q^2\\quad\\Longrightarrow\\quad (2k-2p-q)(2k+2p+q)=3q^2 .$$\nPut $u=2k-2p-q$ and $v=2k+2p+q$. Then $v\\gt 0$, so $u\\gt 0$; also $uv=3q^2$ and\n$$v-u=4p+2q\\gt 0.$$\nSo $(u,v)$ is a pair of complementary divisors of $3q^2$ with $u\\lt v$.</p>\n<p><b>Case $q\\ne3$.</b> The divisors of $3q^2$ are $1,3,q,3q,q^2,3q^2$, and the pairs with $u\\lt v$ are $(1,3q^2)$, $(3,q^2)$, $(q,3q)$.</p>\n<ul>\n<li>$(u,v)=(q,3q)$: then $4p+2q=2q$, so $p=0$. Impossible.</li>\n<li>$(u,v)=(1,3q^2)$: $4p=3q^2-2q-1=(3q+1)(q-1)$. For $q=2$ this gives $4p=7$, impossible. For odd $q$, $p=\\frac{3q+1}{2}\\cdot\\frac{q-1}{2}$ is a product of two integers. If $q\\ge5$ both factors are at least $2$, so $p$ is composite. ($q=3$ is excluded in this case.) No solutions.</li>\n<li>$(u,v)=(3,q^2)$: $4p=q^2-2q-3=(q-3)(q+1)$. For $q=2$ the right side is negative. For odd $q\\ge5$, $p=\\frac{q-3}{2}\\cdot\\frac{q+1}{2}$ with $\\frac{q+1}2\\ge3$, so $p$ is prime only if $\\frac{q-3}2=1$. Then $q=5$, $p=3$.</li>\n</ul>\n<p><b>Case $q=3$.</b> $3q^2=27$, and the pairs are $(1,27)$ and $(3,9)$. $(3,9)$ gives $4p+6=6$, impossible. $(1,27)$ gives $4p+6=26$, so $p=5$.</p>\n<p>So the only solutions are $(p,q)=(3,5)$ and $(5,3)$, and both work. $\\blacksquare$</p>",
+      "rubric": [
+       {
+        "pts": 4,
+        "desc": "Obtains a useful factorisation, e.g. $(2k-2p-q)(2k+2p+q)=3q^2$ (or an equivalent one such as $(k-p)(k+p)=q(p+q)$ handled correctly)."
+       },
+       {
+        "pts": 3,
+        "desc": "Lists the possible divisor pairs correctly, using positivity and $u\\lt v$ (with $q=3$ treated separately)."
+       },
+       {
+        "pts": 2,
+        "desc": "Eliminates the pair $(q,3q)$."
+       },
+       {
+        "pts": 3,
+        "desc": "Case $(1,3q^2)$: shows it gives only $q=3,\\ p=5$."
+       },
+       {
+        "pts": 3,
+        "desc": "Case $(3,q^2)$: shows it gives only $q=5,\\ p=3$."
+       },
+       {
+        "pts": 2,
+        "desc": "Handles $q=2$, states the answer $(3,5),(5,3)$ and verifies it. (Answer alone with verification: 2 marks total.)"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "P3",
+   "sec": "p",
+   "type": "free",
+   "title": "Problem 3 · Combinatorics",
+   "stim": "<p>Example for $n=4$: the triangle is cut into $16$ cells. The six shaded cells around an interior lattice point form a ring of length $6$. This is not the longest ring.</p><div data-fig=\"0\"></div>",
+   "figs": [
+    {
+     "t": "svg",
+     "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 240 203\" width=\"240\" height=\"203\"><g stroke=\"currentColor\" stroke-width=\"1.6\" fill=\"none\"><polygon points=\"95.0,58.3 70.0,101.6 120.0,101.6\" fill=\"currentColor\" fill-opacity=\"0.22\" stroke=\"none\"/><polygon points=\"145.0,58.3 120.0,101.6 170.0,101.6\" fill=\"currentColor\" fill-opacity=\"0.22\" stroke=\"none\"/><polygon points=\"95.0,58.3 145.0,58.3 120.0,101.6\" fill=\"currentColor\" fill-opacity=\"0.22\" stroke=\"none\"/><polygon points=\"120.0,101.6 95.0,144.9 145.0,144.9\" fill=\"currentColor\" fill-opacity=\"0.22\" stroke=\"none\"/><polygon points=\"70.0,101.6 120.0,101.6 95.0,144.9\" fill=\"currentColor\" fill-opacity=\"0.22\" stroke=\"none\"/><polygon points=\"120.0,101.6 170.0,101.6 145.0,144.9\" fill=\"currentColor\" fill-opacity=\"0.22\" stroke=\"none\"/><line x1=\"120.0\" y1=\"15.0\" x2=\"120.0\" y2=\"15.0\"/><line x1=\"95.0\" y1=\"58.3\" x2=\"145.0\" y2=\"58.3\"/><line x1=\"70.0\" y1=\"101.6\" x2=\"170.0\" y2=\"101.6\"/><line x1=\"45.0\" y1=\"144.9\" x2=\"195.0\" y2=\"144.9\"/><line x1=\"20.0\" y1=\"188.2\" x2=\"220.0\" y2=\"188.2\"/><line x1=\"120.0\" y1=\"15.0\" x2=\"220.0\" y2=\"188.2\"/><line x1=\"120.0\" y1=\"15.0\" x2=\"20.0\" y2=\"188.2\"/><line x1=\"95.0\" y1=\"58.3\" x2=\"170.0\" y2=\"188.2\"/><line x1=\"145.0\" y1=\"58.3\" x2=\"70.0\" y2=\"188.2\"/><line x1=\"70.0\" y1=\"101.6\" x2=\"120.0\" y2=\"188.2\"/><line x1=\"170.0\" y1=\"101.6\" x2=\"120.0\" y2=\"188.2\"/><line x1=\"45.0\" y1=\"144.9\" x2=\"70.0\" y2=\"188.2\"/><line x1=\"195.0\" y1=\"144.9\" x2=\"170.0\" y2=\"188.2\"/></g></svg>",
+     "cap": "Triangle of side 4 divided into 16 cells; shaded: a ring of length 6."
+    }
+   ],
+   "stem": "<p>Let $n\\ge 3$ be an integer. An equilateral triangle of side $n$ is divided by lines parallel to its sides into $n^2$ unit equilateral triangles, called <i>cells</i>.</p>\n<p>A <i>ring of length $k$</i> is a sequence $c_1,c_2,\\dots,c_k$ of $k\\ge3$ distinct cells such that $c_i$ and $c_{i+1}$ share a side for $i=1,\\dots,k-1$, and $c_k$ and $c_1$ also share a side.</p>\n<p>Find, in terms of $n$, the largest possible length of a ring.</p>\n<p><i>You may use the isometric grid tool to draw your rings.</i></p>",
+   "subs": [
+    {
+     "k": "p",
+     "html": "Write a complete proof.",
+     "pts": 17,
+     "tools": [
+      "math",
+      "iso"
+     ],
+     "key": {
+      "kind": "manual",
+      "max": 17,
+      "rationale": "<p><b>Answer.</b> $n(n-1)$.</p>\n<p><b>Notation.</b> Number the rows of cells $0,1,\\dots,n-1$ from the top. Row $i$ contains $i+1$ upward cells $U(i,0),\\dots,U(i,i)$ and $i$ downward cells $D(i,0),\\dots,D(i,i-1)$, alternating $U(i,0),D(i,0),U(i,1),\\dots,D(i,i-1),U(i,i)$. The three neighbours of $D(i,j)$ are $U(i,j)$, $U(i,j+1)$ (left and right) and $U(i-1,j)$ (above). In total there are $\\binom{n+1}2$ upward and $\\binom n2$ downward cells.</p>\n<p><b>Upper bound.</b> Every side of a cell is shared only with a cell of the opposite orientation. So the cells of a ring alternate between upward and downward, $k$ is even, and the ring contains $k/2$ distinct downward cells. Hence $k/2\\le\\binom n2$, i.e. $k\\le n(n-1)$.</p>\n<p><b>Construction.</b> We prove by induction the statement</p>\n<p>$(S_n)$: <i>there is a ring through all $\\binom n2$ downward cells (hence of length $n(n-1)$) in which $D(n-1,0)$ and $U(n-1,1)$ are consecutive and which does not use the corner cell $U(n-1,0)$.</i></p>\n<p>$n=3$: $U(1,0),D(1,0),U(1,1),D(2,1),U(2,1),D(2,0)$ (the six cells around the interior lattice point).</p>\n<p>$n=4$: $U(2,0),D(2,0),U(1,0),D(1,0),U(1,1),D(2,1),U(2,2),D(3,2),U(3,2),D(3,1),U(3,1),D(3,0)$.</p>\n<p>Both are checked directly from the neighbour rule, and both satisfy the extra conditions.</p>\n<p><b>Step $n\\to n+2$.</b> Let $A$ be a ring given by $(S_n)$, and add two new rows $n$ and $n+1$. These two rows contain the ring\n$$B:\\ U(n,0),D(n,0),U(n,1),D(n,1),\\dots,D(n,n-1),U(n,n),\\;D(n+1,n),U(n+1,n),D(n+1,n-1),U(n+1,n-1),\\dots,U(n+1,1),D(n+1,0)$$\n(back to $U(n,0)$). It runs right along row $n$ and left along row $n+1$ through every downward cell of those rows; the turns use $U(n,n)\\sim D(n+1,n)$ and $D(n+1,0)\\sim U(n,0)$. Deleting $U(n,1)$ from $B$ leaves a path $\\pi$ from $D(n,0)$ to $D(n,1)$ through all downward cells of rows $n,n+1$.</p>\n<p>In $A$, replace the step $D(n-1,0)\\to U(n-1,1)$ by\n$$D(n-1,0)\\to U(n-1,0)\\to \\underbrace{D(n,0)\\to\\cdots\\to D(n,1)}_{\\pi}\\to U(n-1,1).$$\nThe new links $D(n-1,0)\\sim U(n-1,0)$, $U(n-1,0)\\sim D(n,0)$ and $D(n,1)\\sim U(n-1,1)$ are all sides. $U(n-1,0)$ was not used in $A$, and the cells of $\\pi$ are new. So we obtain a ring in the triangle of side $n+2$ through all its downward cells. It still contains the consecutive pair $D(n+1,0),U(n+1,1)$ (from $\\pi$) and does not use $U(n+1,0)$. This proves $(S_{n+2})$. From the bases $n=3,4$ we get $(S_n)$ for every $n\\ge3$.</p>\n<p>So the maximum is exactly $n(n-1)$. $\\blacksquare$</p>",
+      "rubric": [
+       {
+        "pts": 2,
+        "desc": "Observes that cells sharing a side have opposite orientations, so a ring alternates up/down."
+       },
+       {
+        "pts": 3,
+        "desc": "Concludes $k\\le 2\\binom n2=n(n-1)$ (counts downward cells correctly)."
+       },
+       {
+        "pts": 2,
+        "desc": "Correct answer, with valid rings for small cases (e.g. $n=3$ and $n=4$)."
+       },
+       {
+        "pts": 8,
+        "desc": "A general construction of a ring of length $n(n-1)$ for every $n\\ge3$ (inductive splicing or explicit). A construction that works for only one parity of $n$, or has a fixable gap: up to 5."
+       },
+       {
+        "pts": 2,
+        "desc": "Checks the construction carefully (adjacency, distinctness, every downward cell used)."
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "P4",
+   "sec": "p",
+   "type": "free",
+   "title": "Problem 4 · Geometry",
+   "stim": "<div data-fig=\"0\"></div>",
+   "figs": [
+    {
+     "t": "geo",
+     "w": 380,
+     "h": 300,
+     "pts": {
+      "A": [
+       1.4,
+       4.2
+      ],
+      "B": [
+       0,
+       0
+      ],
+      "C": [
+       6,
+       0
+      ],
+      "H": [
+       1.4,
+       1.533
+      ],
+      "M": [
+       3,
+       0
+      ],
+      "T": [
+       -2.625,
+       0
+      ],
+      "P": [
+       0.068,
+       2.81
+      ],
+      "D": [
+       1.4,
+       0
+      ]
+     },
+     "items": [
+      [
+       "circum",
+       "A",
+       "B",
+       "C"
+      ],
+      [
+       "poly",
+       "A",
+       "B",
+       "C"
+      ],
+      [
+       "seg",
+       "T",
+       "B"
+      ],
+      [
+       "seg",
+       "A",
+       "M"
+      ],
+      [
+       "dashed",
+       "A",
+       "D"
+      ],
+      [
+       "right",
+       "A",
+       "D",
+       "C"
+      ],
+      [
+       "seg",
+       "T",
+       "H"
+      ],
+      [
+       "seg",
+       "A",
+       "T"
+      ],
+      [
+       "dashed",
+       "P",
+       "M"
+      ],
+      [
+       "dot",
+       "H"
+      ],
+      [
+       "dot",
+       "M"
+      ],
+      [
+       "dot",
+       "P"
+      ],
+      [
+       "dot",
+       "T"
+      ]
+     ],
+     "labels": {
+      "A": "n",
+      "B": "s",
+      "C": "se",
+      "H": "e",
+      "M": "s",
+      "T": "s",
+      "P": "nw",
+      "D": "s"
+     },
+     "cap": "The configuration of Problem 4 (Γ is the circumcircle). D is the foot of the altitude from A."
+    }
+   ],
+   "stem": "<p>Let $ABC$ be an acute triangle with $AB\\lt AC$, circumcircle $\\Gamma$ and orthocentre $H$, and let $M$ be the midpoint of $BC$. The line through $H$ perpendicular to $AM$ meets line $BC$ at $T$. The line $AT$ meets $\\Gamma$ again at $P\\neq A$.</p>\n<p>Prove that $P$, $H$, $M$ are collinear.</p>",
+   "subs": [
+    {
+     "k": "p",
+     "html": "Write a complete proof.",
+     "pts": 17,
+     "tools": [
+      "math",
+      "geo"
+     ],
+     "key": {
+      "kind": "manual",
+      "max": 17,
+      "rationale": "<p><b>$T$ exists.</b> The line through $H$ perpendicular to $AM$ is parallel to $BC$ only if $AM\\perp BC$, i.e. only if $AB=AC$. Since $AB\\lt AC$, $T$ is well defined.</p>\n<p><b>Step 1: $MH\\perp AT$.</b> In triangle $ATM$, the line $AH$ is perpendicular to $BC=TM$, and the line $TH$ is perpendicular to $AM$. So $H$ lies on two altitudes of triangle $ATM$ and is its orthocentre. Hence $MH\\perp AT$. Let $Q$ be the intersection of lines $MH$ and $AT$. Then $Q$ is the foot of the perpendicular from $A$ to line $MH$. (Line $MH$ is well defined since $H\\ne M$, and $A\\notin MH$: otherwise $A,H,M$ would be collinear, so $AM\\perp BC$ and $AB=AC$.) In particular $Q\\neq A$.</p>\n<p><b>Step 2: the antipode.</b> Let $A'$ be the point of $\\Gamma$ diametrically opposite to $A$. Then $A'C\\perp AC$ and $BH\\perp AC$, so $A'C\\parallel BH$. Similarly $A'B\\parallel CH$. So $BHCA'$ is a parallelogram, its diagonals bisect each other, and $M$ is the midpoint of $HA'$. Hence line $MH$ passes through $A'$.</p>\n<p><b>Step 3.</b> The line $A'H$ passes through the interior point $H$, so it meets $\\Gamma$ at a second point $Q'\\ne A'$. Since $AA'$ is a diameter, $\\angle AQ'A'=90^\\circ$, i.e. $AQ'\\perp$ line $A'H=$ line $MH$. (Here $Q'\\ne A$ because $A\\notin MH$; also $H\\ne M$, since otherwise $M$ would lie on the altitude from $A$ and $AB=AC$.) So $Q'$ is also the foot of the perpendicular from $A$ to line $MH$, and therefore $Q'=Q$.</p>\n<p><b>Conclusion.</b> $Q$ lies on $\\Gamma$, on line $AT$, and $Q\\ne A$. So $Q$ is the second intersection $P$ of $AT$ with $\\Gamma$. Since $Q$ lies on $MH$, the points $P,H,M$ are collinear. (As a by-product, $\\angle APH=90^\\circ$.) $\\blacksquare$</p>",
+      "rubric": [
+       {
+        "pts": 1,
+        "desc": "Notes that $T$ exists because $AB\\ne AC$."
+       },
+       {
+        "pts": 5,
+        "desc": "Shows $H$ is the orthocentre of triangle $ATM$, hence $MH\\perp AT$."
+       },
+       {
+        "pts": 4,
+        "desc": "Shows that line $MH$ passes through the antipode $A'$ of $A$ (parallelogram $BHCA'$, or reflection of $H$ in $M$)."
+       },
+       {
+        "pts": 4,
+        "desc": "Shows that the second intersection of line $A'H$ with $\\Gamma$ is the foot of the perpendicular from $A$ to $MH$ (right angle on the diameter)."
+       },
+       {
+        "pts": 3,
+        "desc": "Identifies this point with $P$, with non-degeneracy handled ($A\\notin MH$, $Q\\ne A$), and concludes. A complete alternative proof (coordinates, complex numbers, inversion) earns full marks."
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}

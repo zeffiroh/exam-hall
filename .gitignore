@@ -1,0 +1,4 @@
+node_modules
+.env
+.publish-state.json
+drop/done/

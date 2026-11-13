@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<title>Exam · Exam Hall</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body class="exam">
+<div class="ov" id="intro"><div>
+  <p class="mut" id="iroom"></p>
+  <h1 id="ititle">Loading…</h1>
+  <p class="mut" id="isub"></p>
+  <div id="ibody"></div>
+  <div class="card" id="ifacts"></div>
+  <p class="err" id="ierr"></p>
+  <div class="row"><button class="pri" id="go" disabled>Begin</button><a class="btn" href="student.html">Back to room</a></div>
+</div></div>
+<header class="xh">
+  <b id="xt"></b>
+  <span class="pillbar" id="secs"></span>
+  <span class="mut" id="who"></span>
+  <span id="tm" aria-live="polite"></span>
+  <button id="bCalc" hidden>Calculator</button>
+  <button id="bNotes">Notes</button>
+  <button id="bTheme">Theme</button>
+  <span class="mut" id="saved"></span>
+</header>
+<div id="app"><section id="L" class="stim" aria-label="Source material"></section><section id="R" aria-label="Question"></section></div>
+<footer class="xf" id="nav"></footer>
+<div class="pop" id="notes" hidden><b>Notes for this question</b><textarea id="nt" aria-label="Notes"></textarea></div>
+<div class="pop" id="calc" hidden style="width:380px">
+  <div class="tabs"><button id="ct1" class="on">Scientific</button><button id="ct2">Graphing</button></div>
+  <div id="cs"><input id="cd" aria-label="Expression" autocomplete="off"><div id="cres"></div><div class="kp" id="kp"></div></div>
+  <div id="cg" hidden><input class="ge" value="y = x^2" aria-label="Function 1"><input class="ge" value="" aria-label="Function 2"><input class="ge" value="" aria-label="Function 3"><canvas id="gc" width="360" height="260"></canvas><div class="hint">Drag to pan, scroll to zoom.</div></div>
+</div>
+<div class="nv" id="nv" hidden></div>
+<div id="hb" hidden><button id="h1">Highlight</button><button id="h2">To notes</button><button id="h3">Clear highlights</button></div>
+<div class="ov" id="fsw" hidden><div><h2>Return to full screen</h2><p>Leaving full screen has been recorded for your teacher.</p><button class="pri" id="refs">Return to the exam</button></div></div>
+<div class="ov" id="done" hidden><div><h1>Submitted</h1><p id="dmsg">Your answers are saved.</p><div class="row"><a class="btn pri" id="drep" href="student.html#attempts">See my results</a><a class="btn" href="student.html">Back to room</a></div></div></div>
+<script src="js/config.js"></script>
+<script type="module" src="js/exam.js"></script>
+</body>
+</html>
