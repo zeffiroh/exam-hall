@@ -71,6 +71,15 @@ body.exam{height:100dvh;overflow:hidden;display:flex;flex-direction:column}
 .op:hover{border-color:var(--mar)}
 .op:has(input:checked){border-color:var(--mar);background:var(--pn)}
 .op input{margin-right:8px}
+.xbar{display:flex;justify-content:flex-end;margin:6px 0 -2px}
+.xtog{font-weight:700;letter-spacing:.04em}
+.xtog.on{border-color:var(--mar);background:var(--pn);color:var(--mar)}
+.oprow{display:flex;align-items:center;gap:8px}
+.oprow .op{flex:1;min-width:0}
+.xo{display:none;min-width:52px;justify-content:center;flex:none}
+.xm .xo{display:inline-flex}
+.op.x{opacity:.55}
+.op.x>span{text-decoration:line-through;text-decoration-thickness:2px}
 .sub{border:1px solid var(--ln);border-radius:10px;padding:10px 12px;margin:12px 0}
 .sub .lab{margin-bottom:8px}
 .pts{float:right;font:12px system-ui,sans-serif;color:var(--mut)}

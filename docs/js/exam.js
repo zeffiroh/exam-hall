@@ -9,7 +9,7 @@ const me = PREVIEW ? { name: 'Preview', email: 'preview@local' } : user();
 if (!PREVIEW && (!me || me.role !== 'student' || !ACT)) location.href = 'index.html';
 
 let A = null, CARDS = [], SECS = [], SET = null, AID = null, pack = null;
-let ST = { ans: {}, t: {}, ev: [], note: {}, hl: {}, flag: {}, done: false, sec: 0, s: {}, cur: {} };
+let ST = { ans: {}, t: {}, ev: [], note: {}, hl: {}, flag: {}, x: {}, xm: false, done: false, sec: 0, s: {}, cur: {} };
 let cur = 0, dirty = false, live = false, charts = [], warned = {};
 
 const sec = () => SECS[ST.sec];
@@ -68,7 +68,7 @@ async function begin() {
       SET = got.set;
       Object.assign(ST, a.state || {});
       if (Array.isArray(ST.s)) { const old = ST.s; ST.s = {}; SECS.forEach((x, i) => { if (old[i]) ST.s[x.id] = old[i]; }); ST.sec = Math.max(0, (ST.sec || 1) - 1); }
-      ST.ans = ST.ans || {}; ST.s = ST.s || {}; ST.cur = ST.cur || {};
+      ST.ans = ST.ans || {}; ST.s = ST.s || {}; ST.cur = ST.cur || {}; ST.x = ST.x || {};
     }
     CARDS = SET.body.cards || [];
     CARDS.forEach(c => { if (!c.sec) c.sec = SECS[0].id; });
@@ -131,10 +131,39 @@ async function show(i) {
   if (hasL) renderStim(L, c, { pack, charts }).then(applyHl);
   R.append(el('h2', { text: label(c), style: 'margin-top:0' }));
   if (c.stem) R.append(el('div', { class: 'stem', html: c.stem }));
+  R.classList.toggle('xm', !!ST.xm);
   if (c.type === 'mcq') {
+    const xs = new Set(ST.x[c.id] || []);
+    const keepX = () => { if (xs.size) ST.x[c.id] = [...xs].sort((p, q) => p - q); else delete ST.x[c.id]; dirty = true; };
+    const tog = el('button', { type: 'button', class: 'xtog' + (ST.xm ? ' on' : ''), title: 'Cross out answer choices', 'aria-pressed': String(!!ST.xm), 'aria-label': 'Answer eliminator' }, el('s', { text: 'ABC' }));
+    tog.onclick = () => { ST.xm = !ST.xm; dirty = true; tog.classList.toggle('on', ST.xm); tog.setAttribute('aria-pressed', String(ST.xm)); R.classList.toggle('xm', ST.xm); };
+    R.append(el('div', { class: 'xbar' }, tog));
     (c.opts || []).forEach((o, j) => {
-      const r = el('input', { type: 'radio', name: 'opt', checked: ST.ans[c.id] === j || ST.ans[c.id] === String(j), onchange: () => { ST.ans[c.id] = j; touch(); } });
-      R.append(el('label', { class: 'op' }, r, el('span', { html: o })));
+      const letter = String.fromCharCode(65 + j);
+      const lab = el('label', { class: 'op' });
+      const xb = el('button', { type: 'button', class: 'xo' });
+      const paint = () => {
+        const on = xs.has(j);
+        lab.classList.toggle('x', on);
+        xb.replaceChildren(on ? 'Undo' : el('s', { text: letter }));
+        xb.setAttribute('aria-label', (on ? 'Undo cross out of option ' : 'Cross out option ') + letter);
+      };
+      const r = el('input', { type: 'radio', name: 'opt', checked: ST.ans[c.id] === j || ST.ans[c.id] === String(j), onchange: () => {
+        ST.ans[c.id] = j;
+        if (xs.has(j)) { xs.delete(j); paint(); keepX(); }
+        touch();
+      } });
+      xb.onclick = () => {
+        if (xs.has(j)) xs.delete(j);
+        else {
+          xs.add(j);
+          if (r.checked) { r.checked = false; delete ST.ans[c.id]; touch(); }
+        }
+        paint(); keepX();
+      };
+      lab.append(r, el('span', { html: o }));
+      paint();
+      R.append(el('div', { class: 'oprow' }, lab, xb));
     });
   } else if (c.type === 'num' || c.type === 'short') {
     const inp = el('input', { class: 'single', type: 'text', inputmode: c.type === 'num' ? 'decimal' : 'text', value: ST.ans[c.id] ?? '', placeholder: c.type === 'num' ? 'Enter a number' : 'Your answer', 'aria-label': 'Answer' });
