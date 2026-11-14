@@ -76,7 +76,7 @@ async function begin() {
     if (!PREVIEW) {
       const a = await S.start(me, ACT, null);
       AID = a.id;
-      MULT = Math.max(1, +a.mult || 1);
+      MULT = +a.state?.mult || Math.max(1, +a.mult || 1, +$('#imult').value || 1);
       const got = await S.getSet(me, ACT, a.set);
       SET = got.set;
       Object.assign(ST, a.state || {});
@@ -87,7 +87,8 @@ async function begin() {
     CARDS.forEach(c => { if (!c.sec) c.sec = SECS[0].id; });
     if (ST.done) { showDone(); return; }
     ST.name = me.name; ST.email = me.email; ST.set = SET.set_id;
-    if (MULT > 1) ST.mult = MULT;
+    if (PREVIEW) MULT = Math.max(1, +$('#imult').value || 1);
+    ST.mult = MULT;
     if (typeof ST.sec !== 'number' || !SECS[ST.sec]) ST.sec = 0;
     while (ST.sec < SECS.length - 1 && !inSec().length) ST.sec++;
     if (!ST.s[sec().id]) ST.s[sec().id] = Date.now();

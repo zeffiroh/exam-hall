@@ -36,7 +36,7 @@ async function rooms() {
   rs.forEach(r => g.append(el('div', { class: 'card' },
     r.slug === 'library'
       ? el('div', { class: 'row' }, el('span', { class: 'chip', text: 'Exam library' }), el('span', { class: 'chip', text: 'Every teacher can add these' }))
-      : el('div', { class: 'row' }, el('span', { class: 'chip', text: r.active ? 'Open' : 'Closed' }), el('span', { class: 'chip', text: 'Code ' + r.code }), r.owner && isAdmin() ? el('span', { class: 'chip', text: 'Teacher ' + r.owner.slice(0, 4) + '…' }) : null),
+      : el('div', { class: 'row' }, el('span', { class: 'chip', text: 'Code ' + r.code }), r.owner && isAdmin() ? el('span', { class: 'chip', text: 'Teacher ' + r.owner.slice(0, 4) + '…' }) : null),
     el('h3', { text: r.title, style: 'margin:4px 0 0' }),
     el('div', { class: 'mut', text: `${r.n} activit${r.n === 1 ? 'y' : 'ies'} · ${r.students} student(s)` }),
     el('span', { class: 'sp' }),
@@ -72,7 +72,6 @@ async function room(slug) {
     el('div', { class: 'row' }, el('h1', { text: r.title }), el('span', { class: 'sp' }),
       el('button', { text: 'Rename', onclick: async () => { const t = await dialog({ title: 'Rename room', body: '', input: r.title, ok: 'Save' }); if (t) { await T('room_update', slug, { title: t }); route(); } } }),
       lib ? null : el('button', { text: 'Duplicate', onclick: () => copyRoom(slug) }),
-      lib ? null : el('button', { text: r.active ? 'Close room' : 'Open room', onclick: async () => { await T('room_update', slug, { active: !r.active }); route(); } }),
       lib ? null : el('button', { class: 'danger', text: 'Delete', onclick: async () => { if (await confirmBox('Delete this room?', 'All its activities, question sets, attempts and grades are deleted permanently.', 'Delete room', true)) { await T('room_delete', slug); location.hash = ''; } } })),
     lib ? el('div', { class: 'card', text: 'Exams here are published with python publish.py. Every teacher can add them to their rooms, and new sets published here reach their copies too. Students cannot join this room.' }) : el('div', { class: 'card row' },
       el('div', null, el('div', { class: 'mut', text: 'Room code' }), el('b', { text: r.code, style: 'font-size:20px;font-family:ui-monospace,monospace' })),
@@ -372,7 +371,7 @@ async function attempt(id) {
   main.append(crumb(['Rooms', '#'], [t.room_title, '#room=' + t.room], [t.title, '#act=' + t.activity + '&tab=attempts'], [t.name || t.email]),
     el('div', { class: 'row' }, el('h1', { text: t.name || t.email }), el('span', { class: 'sp' }),
       el('label', { class: 'row', style: 'gap:6px' }, el('input', { type: 'checkbox', checked: t.released, onchange: async e => { await T('attempt_release', id, e.target.checked); toast(e.target.checked ? 'Released to the student' : 'Hidden from the student'); } }), 'Released to student')),
-    el('p', { class: 'mut', text: `${t.email} · Set ${t.set_id} · started ${fmtDate(t.started_at)} · ${t.status === 'finished' ? 'submitted ' + fmtDate(t.finished_at) : 'in progress'} · auto-marked ${t.auto_max ? num(t.auto_score) + '/' + num(t.auto_max) : '–'}` }),
+    el('p', { class: 'mut', text: `${t.email} · Set ${t.set_id} · started ${fmtDate(t.started_at)} · ${t.status === 'finished' ? 'submitted ' + fmtDate(t.finished_at) : 'in progress'} · auto-marked ${t.auto_max ? num(t.auto_score) + '/' + num(t.auto_max) : '–'}${+st.mult > 1 ? ' · extra time ' + st.mult + '×' : ''}` }),
     el('details', { class: 'card' }, el('summary', { text: `Proctoring log · ${leaves} focus loss(es), ${ev.length} events` }),
       el('div', { class: 'mut', style: 'max-height:200px;overflow:auto' }, ev.map(e => el('div', { text: fmtDur(e[0]) + ' · ' + e[1] })))));
   if (!s) { main.append(el('p', { class: 'err', text: 'The question set for this attempt was deleted.' })); return; }

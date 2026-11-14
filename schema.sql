@@ -127,6 +127,7 @@ alter table exam.rooms add column if not exists settings jsonb not null default 
 alter table exam.rooms add column if not exists share_code text;
 create unique index if not exists rooms_share on exam.rooms(lower(share_code)) where share_code is not null;
 alter table exam.access_codes add column if not exists mailed_at timestamptz;
+update exam.rooms set active=true where slug<>'library' and not active;
 
 create index if not exists attempts_email on exam.attempts(email);
 create index if not exists attempts_act on exam.attempts(activity,set_id);
@@ -144,7 +145,7 @@ create function exam.chk(p_code text) returns text
 language plpgsql security definer set search_path=exam,pg_temp as $$
 declare r text;
 begin
-  select m.slug into r from rooms m where lower(m.code)=lower(btrim(coalesce(p_code,''))) and m.active
+  select m.slug into r from rooms m where lower(m.code)=lower(btrim(coalesce(p_code,''))) and m.slug<>'library'
     and (m.owner is null or exists(select 1 from access_codes c where c.code=m.owner and not c.revoked));
   if r is null then raise exception 'Unknown room code'; end if;
   return r;
