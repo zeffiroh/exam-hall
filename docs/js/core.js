@@ -37,9 +37,10 @@ export function signOut() {
 }
 export function requireUser(role) {
   const u = user();
-  if (!u || u.role !== role || (role === 'teacher' && !sessionStorage.apc)) { location.href = 'index.html'; throw new Error('auth'); }
+  if (!u || u.role !== role || (role === 'teacher' && !u.key && !sessionStorage.apc)) { location.href = 'index.html'; throw new Error('auth'); }
   return u;
 }
+export const isAdmin = () => { const u = user(); return !!(u && u.role === 'teacher' && !u.key && sessionStorage.apc); };
 
 const clients = {};
 async function client(conn) {
@@ -55,6 +56,16 @@ export async function studentSql() { return client(CFG.studentConn); }
 export async function teacherSql() {
   if (!sessionStorage.apc) throw new Error('auth');
   return client(sessionStorage.apc);
+}
+export async function T(fn, ...args) {
+  const u = user() || {};
+  const admin = !u.key && sessionStorage.apc;
+  if (!admin && !u.key) throw new Error('auth');
+  const q = admin ? await client(sessionStorage.apc) : await studentSql();
+  const params = [admin ? null : u.key, ...args.map(a => a != null && typeof a === 'object' ? JSON.stringify(a) : a)];
+  const text = `select exam.t_${fn}(${params.map((_, i) => '$' + (i + 1)).join(',')}) as r`;
+  const rows = await (q.query ? q.query(text, params) : q(text, params));
+  return rows[0] ? rows[0].r : null;
 }
 export function teacherConnFor(password) {
   const u = new URL(CFG.studentConn);
@@ -157,7 +168,7 @@ export function topbar(active) {
       el('img', { src: 'assets/icon.svg', alt: '', width: 22, height: 22 }), el('b', { text: CFG.siteName || 'Exam Hall' })),
     el('nav', null, ...links.map(([h, t]) => el('a', { href: h, text: t, class: active === t ? 'cur' : '' }))),
     el('span', { class: 'sp' }),
-    u ? el('span', { class: 'mut', text: u.role === 'teacher' ? 'Teacher' : u.name }) : null,
+    u ? el('span', { class: 'mut', text: u.role === 'teacher' ? (u.key ? 'Teacher' : 'Site owner') : u.name }) : null,
     el('button', { text: 'Light / Dark', onclick: toggleTheme }),
     u ? el('button', { text: 'Sign out', onclick: signOut }) : null);
   document.body.prepend(bar);

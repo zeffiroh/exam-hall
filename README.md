@@ -41,11 +41,14 @@ More exams are on the way. See the full list on the [access page](https://zeffir
 
 ## Get access
 
-1. Open the **[access page](https://zeffiroh.github.io/exam-hall/pass.html)** and **pay what you want**: UPI, Indian or international cards.
-2. Your personal access code appears on screen right after checkout.
-3. Sign in with your name, email and the code. Your progress follows you to any device.
+**Students join free.** Sign in with your name, email and the room code your teacher gives you. Your progress follows you to any device.
 
-Teachers can also run private rooms for a class: create a room in the dashboard and share its code.
+**Teachers:**
+1. Open the **[access page](https://zeffiroh.github.io/exam-hall/pass.html)** and **pay what you want**: UPI, Indian or international cards.
+2. Your teacher access code appears on screen right after checkout.
+3. Sign in on the **Teacher** tab with that code. Create rooms, add any exam from the library, and give your students the room code.
+
+Your rooms are yours: other teachers can't see or change them. Any teacher can **copy** a room if they know its room code. They get the activities and question sets, never your students or results.
 
 ## Community
 
@@ -64,7 +67,7 @@ Share scores, request new exams and swap study tips on **[Reddit](https://www.re
    ```
 2. Run `schema.sql` (run it again after every update).
 3. Put the student connection string in `docs/js/config.js` (`studentConn`).
-4. Put `TEACHER_PASSWORD=...` in `.env`.
+4. Put `TEACHER_PASSWORD=...` in `.env`. This is the site owner's login: type it on the Teacher tab to see every room, the library and settings.
 5. Turn on GitHub Pages from `main` / `docs`.
 
 ### Add an exam
@@ -74,26 +77,26 @@ Share scores, request new exams and swap study tips on **[Reddit](https://www.re
    ```bash
    python publish.py
    ```
-   It files the set under `content/<exam>/`, checks every question, uploads only what changed, and refreshes the catalog on the access page.
+   It files the set under `content/<exam>/`, checks every question, uploads only what changed to the **exam library**, and refreshes the catalog on the access page. Every teacher can add library exams to their rooms. New sets reach rooms that already have the exam.
 
 | Command | Does |
 |---|---|
 | `python publish.py` | File new drops, check, upload changes |
 | `python publish.py --check` | Check only |
 | `python publish.py --offline` | File drops and rebuild the catalog without uploading |
-| `python publish.py --room CODE` | Publish into a different room |
+| `python publish.py --room CODE` | Publish into one room instead of the library |
 
-### Selling access codes (Razorpay, pay what you want)
+### Selling teacher codes (Razorpay, pay what you want)
 1. In Razorpay, create a **Payment Page** with an amount field set to *Customer decides the amount* (with a small minimum), and turn on **international payments** in Settings if you want buyers outside India.
 2. Set the page's after-payment redirect to `https://YOUR-SITE/unlock.html`.
 3. Paste the page URL into `payLink` in `docs/js/config.js`.
-4. Stock the code pool:
+4. Stock the code pool. Each code is one teacher login:
    ```bash
-   python publish.py --mint 50      # add 50 codes
-   python publish.py --codes        # see who claimed what
-   python publish.py --revoke ABCD-EFGH-JKLM
+   python publish.py --mint 50      # add 50 teacher codes
+   python publish.py --codes        # who claimed what, and how many rooms each teacher has
+   python publish.py --revoke ABCD-EFGH-JKLM   # that teacher is signed out and their rooms close
    ```
-After paying, the buyer lands on `unlock.html`, which releases one code for their payment ID (`pay_…`). If the redirect doesn't carry the ID, they paste it from their Razorpay receipt email. Entering the same ID again shows the same code. The site has no server, so it can't confirm a payment with Razorpay. Now and then, compare `--codes` with your Razorpay payments and revoke any code with no matching payment.
+After paying, the teacher lands on `unlock.html`, which releases one code for their payment ID (`pay_…`). If the redirect doesn't carry the ID, they paste it from their Razorpay receipt email. Entering the same ID again shows the same code. The site has no server, so it can't confirm a payment with Razorpay. Now and then, compare `--codes` with your Razorpay payments and revoke any code with no matching payment.
 
 ### Community links
 Set `community.reddit` and `community.discord` in `docs/js/config.js` to show them on the site, and replace `YOUR_SUBREDDIT`, `YOUR_INVITE` and `YOUR_SERVER_ID` above for the badges.

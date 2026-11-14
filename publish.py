@@ -5,9 +5,9 @@
   python publish.py --check      check only, change nothing
   python publish.py --offline    file drops and rebuild the catalog, skip the database
   python publish.py --all        upload every set, even unchanged ones
-  python publish.py --room CODE  publish into another room (slug or room code)
-  python publish.py --mint 25    add 25 sellable access codes to the room
-  python publish.py --codes      list access codes and who claimed them
+  python publish.py --room CODE  publish into another room instead of the library (slug or room code)
+  python publish.py --mint 25    add 25 sellable teacher access codes
+  python publish.py --codes      list teacher codes, who claimed them and how many rooms they own
   python publish.py --revoke CODE
 """
 import argparse
@@ -271,15 +271,16 @@ def gen_code():
     return "-".join("".join(secrets.choice(alphabet) for _ in range(4)) for _ in range(3))
 
 
-def mint(db, room, n):
+def mint(db, n):
     codes = [gen_code() for _ in range(n)]
-    db.q("insert into exam.access_codes(code, room) select unnest($1::text[]), $2 on conflict do nothing", "{" + ",".join(codes) + "}", room["slug"])
-    left = db.q("select count(*)::int n from exam.access_codes where room=$1 and session is null and not revoked", room["slug"])[0]["n"]
-    say(OK, f"added {n} codes to '{room['title']}' · {left} unclaimed")
+    db.q("insert into exam.access_codes(code) select unnest($1::text[]) on conflict do nothing", "{" + ",".join(codes) + "}")
+    left = db.q("select count(*)::int n from exam.access_codes where session is null and not revoked")[0]["n"]
+    say(OK, f"added {n} teacher codes · {left} unclaimed")
 
 
-def list_codes(db, room):
-    rows = db.q("select code, session, email, claimed_at, revoked from exam.access_codes where room=$1 order by claimed_at nulls last, created_at", room["slug"])
+def list_codes(db):
+    rows = db.q("""select c.code, c.session, c.email, c.claimed_at, c.revoked, (select count(*) from exam.rooms r where r.owner=c.code)::int rooms
+                   from exam.access_codes c order by c.claimed_at nulls last, c.created_at""")
     if not rows:
         print("   No codes yet. Run: python publish.py --mint 25")
         return
@@ -287,7 +288,7 @@ def list_codes(db, room):
     print(f"   {len(rows)} codes · {len(claimed)} claimed · {sum(r['revoked'] for r in rows)} revoked\n")
     for r in rows:
         state = "revoked" if r["revoked"] else "claimed " + str(r["claimed_at"])[:16] if r["session"] else "unclaimed"
-        print(f"   {r['code']}  {state:28} {r['email'] or '':28} {r['session'] or ''}")
+        print(f"   {r['code']}  {state:28} {str(r['rooms']) + ' room(s)':10} {r['email'] or '':28} {r['session'] or ''}")
 
 
 # ---------------------------------------------------------------- main
@@ -297,23 +298,22 @@ def main():
     ap.add_argument("--check", action="store_true", help="check only, change nothing")
     ap.add_argument("--offline", action="store_true", help="skip the database")
     ap.add_argument("--all", action="store_true", help="upload every set, even unchanged ones")
-    ap.add_argument("--room", help="room slug or code (default: PUBLISH_ROOM in .env, else 'main')")
-    ap.add_argument("--mint", type=int, metavar="N", help="add N access codes for sale")
-    ap.add_argument("--codes", action="store_true", help="list access codes")
-    ap.add_argument("--revoke", metavar="CODE", help="revoke an access code")
+    ap.add_argument("--room", help="room slug or code (default: PUBLISH_ROOM in .env, else the library)")
+    ap.add_argument("--mint", type=int, metavar="N", help="add N teacher access codes for sale")
+    ap.add_argument("--codes", action="store_true", help="list teacher access codes")
+    ap.add_argument("--revoke", metavar="CODE", help="revoke a teacher access code (their rooms close)")
     a = ap.parse_args()
     env = load_env()
 
     if a.mint or a.codes or a.revoke:
         db = DB(env.get("TEACHER_PASSWORD") or sys.exit("Set TEACHER_PASSWORD in .env"))
-        room = room_of(db, a.room or env.get("PUBLISH_ROOM") or "main")
         if a.mint:
-            mint(db, room, a.mint)
+            mint(db, a.mint)
         if a.revoke:
             n = db.q("update exam.access_codes set revoked=true where upper(code)=upper($1) returning code", a.revoke)
             say(OK if n else BAD, f"revoked {a.revoke}" if n else f"no code {a.revoke}")
         if a.codes:
-            list_codes(db, room)
+            list_codes(db)
         return
 
     print("\nExam Hall · publish\n")
@@ -359,17 +359,19 @@ def main():
     if not pw:
         sys.exit("\n Set TEACHER_PASSWORD in .env to upload (or use --offline).")
     db = DB(pw)
-    room = room_of(db, a.room or env.get("PUBLISH_ROOM") or "main")
-    print(f"\n Uploading to room '{room['title']}' (code {room['code']})\n")
+    room = room_of(db, a.room or env.get("PUBLISH_ROOM") or "library")
+    lib = room["slug"] == "library"
+    print("\n Uploading to " + ("the exam library" if lib else f"'{room['title']}' (code {room['code']})") + "\n")
     state = read_json(STATE) if STATE.exists() else {}
     pushed = 0
     for e in exams:
         m = e["meta"]
         settings = m.get("settings", {})
-        db.q("""insert into exam.activities(slug, room, kind, title, subtitle, settings, assign, position)
-                values($1, $2, 'exam', $3, $4, $5::jsonb, $6, (select coalesce(max(position), 0) + 1 from exam.activities where room=$2))
-                on conflict(slug) do update set title=excluded.title, subtitle=excluded.subtitle, settings=excluded.settings, assign=excluded.assign""",
-             m["slug"], room["slug"], m.get("title", m["slug"]), m.get("subtitle"), settings, m.get("assign", "random"))
+        db.q("""insert into exam.activities(slug, room, kind, title, subtitle, settings, assign, position, library)
+                values($1, $2, 'exam', $3, $4, $5::jsonb, $6, (select coalesce(max(position), 0) + 1 from exam.activities where room=$2), $7::boolean)
+                on conflict(slug) do update set title=excluded.title, subtitle=excluded.subtitle, settings=excluded.settings, assign=excluded.assign,
+                  library=exam.activities.library or excluded.library""",
+             m["slug"], room["slug"], m.get("title", m["slug"]), m.get("subtitle"), settings, m.get("assign", "random"), "true" if lib else "false")
         for s in e["sets"]:
             if not s["ok"]:
                 say(BAD, f"{m['slug']} {s['label']}: skipped (fix errors first)")
@@ -381,9 +383,9 @@ def main():
             r = db.q("select exam.import_set($1, $2, $3, $4::jsonb) r", m["slug"], s["id"], s["label"], {"cards": s["cards"]})[0]["r"]
             state[key] = h
             pushed += 1
-            say(OK, f"{m.get('title')} · {s['label']}: {r['cards']} questions, {r['keys']} answer keys")
+            say(OK, f"{m.get('title')} · {s['label']}: {r['cards']} questions, {r['keys']} answer keys" + (f", copied to {r['copies']} teacher room(s)" if r.get("copies") else ""))
     write_json(STATE, state)
-    print(f"\n Done. {pushed} set(s) uploaded" + ("" if pushed else " (nothing changed)") + f". Students join with code {room['code']}.\n")
+    print(f"\n Done. {pushed} set(s) uploaded" + ("" if pushed else " (nothing changed)") + (". Teachers can add these exams from the library." if lib else f". Students join with code {room['code']}.") + "\n")
 
 
 if __name__ == "__main__":

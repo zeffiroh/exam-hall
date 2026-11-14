@@ -110,12 +110,19 @@ create table if not exists exam.live_events(
 
 create table if not exists exam.access_codes(
   code text primary key,
-  room text not null references exam.rooms(slug) on delete cascade,
   session text unique,
   email text,
   claimed_at timestamptz,
   revoked boolean not null default false,
   created_at timestamptz not null default now());
+
+alter table exam.access_codes drop column if exists room;
+alter table exam.rooms add column if not exists owner text;
+alter table exam.activities add column if not exists library boolean not null default false;
+alter table exam.activities add column if not exists source text;
+insert into exam.rooms(slug,title,code,active) values('library','Exam library','library-'||md5(random()::text),false) on conflict(slug) do nothing;
+create index if not exists rooms_owner on exam.rooms(owner);
+create index if not exists acts_source on exam.activities(source);
 
 create index if not exists attempts_email on exam.attempts(email);
 create index if not exists attempts_act on exam.attempts(activity,set_id);
@@ -133,11 +140,8 @@ create function exam.chk(p_code text) returns text
 language plpgsql security definer set search_path=exam,pg_temp as $$
 declare r text;
 begin
-  select slug into r from rooms where lower(code)=lower(btrim(coalesce(p_code,''))) and active;
-  if r is null then
-    select m.slug into r from access_codes c join rooms m on m.slug=c.room
-      where lower(c.code)=lower(btrim(coalesce(p_code,''))) and not c.revoked and m.active;
-  end if;
+  select m.slug into r from rooms m where lower(m.code)=lower(btrim(coalesce(p_code,''))) and m.active
+    and (m.owner is null or exists(select 1 from access_codes c where c.code=m.owner and not c.revoked));
   if r is null then raise exception 'Unknown room code'; end if;
   return r;
 end $$;
@@ -307,10 +311,10 @@ begin
     if not found then raise exception 'No access codes are left. Contact the seller with your receipt.'; end if;
   end if;
   if c.revoked then raise exception 'This access code was revoked. Contact the seller.'; end if;
-  return jsonb_build_object('code',c.code,'room',(select title from rooms where slug=c.room),'claimed_at',c.claimed_at);
+  return jsonb_build_object('code',c.code,'claimed_at',c.claimed_at);
 end $$;
 
-create function exam.import_set(p_act text,p_set text,p_label text,p_body jsonb) returns jsonb
+create function exam.put_set(p_act text,p_set text,p_label text,p_body jsonb) returns jsonb
 language plpgsql security definer set search_path=exam,pg_temp as $$
 declare c jsonb; s jsonb; n int:=0; i int:=0; pub jsonb;
 begin
@@ -344,6 +348,390 @@ begin
   return jsonb_build_object('keys',n,'cards',jsonb_array_length(pub->'cards'));
 end $$;
 
+create function exam.import_set(p_act text,p_set text,p_label text,p_body jsonb) returns jsonb
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare r jsonb; d text; n int:=0;
+begin
+  r:=put_set(p_act,p_set,p_label,p_body);
+  if (select library from activities where slug=p_act) then
+    for d in select slug from activities where source=p_act loop
+      perform put_set(d,p_set,p_label,p_body); n:=n+1;
+    end loop;
+  end if;
+  return r||jsonb_build_object('copies',n);
+end $$;
+
+create function exam.who(p_key text) returns text
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare c text;
+begin
+  if session_user='exam_teacher' then return '*'; end if;
+  select code into c from access_codes where upper(code)=upper(btrim(coalesce(p_key,''))) and not revoked;
+  if c is null then raise exception 'Unknown or revoked teacher access code'; end if;
+  return c;
+end $$;
+
+create function exam.own_room(p_key text, p_room text) returns exam.rooms
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare w text:=who(p_key); r rooms;
+begin
+  select * into r from rooms where slug=p_room and (w='*' or owner=w);
+  if not found then raise exception 'Room not found'; end if;
+  return r;
+end $$;
+
+create function exam.own_act(p_key text, p_act text) returns exam.activities
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare w text:=who(p_key); a activities;
+begin
+  select x.* into a from activities x join rooms r on r.slug=x.room where x.slug=p_act and (w='*' or r.owner=w);
+  if not found then raise exception 'Activity not found'; end if;
+  return a;
+end $$;
+
+create function exam.own_att(p_key text, p_id uuid) returns exam.attempts
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare w text:=who(p_key); t attempts;
+begin
+  select a.* into t from attempts a join activities x on x.slug=a.activity join rooms r on r.slug=x.room where a.id=p_id and (w='*' or r.owner=w);
+  if not found then raise exception 'Attempt not found'; end if;
+  return t;
+end $$;
+
+create function exam.mkslug(p text) returns text
+language sql volatile set search_path=exam,pg_temp as $$
+  select coalesce(nullif(trim(both '-' from left(regexp_replace(lower(coalesce(p,'')),'[^a-z0-9]+','-','g'),32)),''),'item')
+    ||'-'||substr(md5(random()::text||clock_timestamp()::text),1,6) $$;
+
+create function exam.room_code_ok(p_code text, p_slug text) returns text
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare c text:=btrim(coalesce(p_code,''));
+begin
+  if c !~ '^[A-Za-z0-9][A-Za-z0-9_-]{3,39}$' then raise exception 'Room code must be 4 to 40 letters, digits, - or _'; end if;
+  if exists(select 1 from rooms where lower(code)=lower(c) and slug is distinct from p_slug)
+     or exists(select 1 from access_codes where lower(code)=lower(c)) then
+    raise exception 'That room code is already used.';
+  end if;
+  return c;
+end $$;
+
+create function exam.copy_act(p_src text, p_room text, p_pos int default null) returns text
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare a activities; n text;
+begin
+  select * into a from activities where slug=p_src;
+  if not found then raise exception 'Activity not found'; end if;
+  n:=mkslug(a.title);
+  insert into activities(slug,room,kind,title,subtitle,settings,assign,active,position,source)
+    values(n,p_room,a.kind,a.title,a.subtitle,a.settings,a.assign,a.library or a.active,coalesce(p_pos,a.position),case when a.library then a.slug else a.source end);
+  insert into sets(activity,set_id,label,active,body) select n,set_id,label,active,body from sets where activity=p_src;
+  insert into qkey(activity,set_id,qid,kind,ans,tol,rationale,dx,unit,sp,lvl,max,rubric,seq)
+    select n,set_id,qid,kind,ans,tol,rationale,dx,unit,sp,lvl,max,rubric,seq from qkey where activity=p_src;
+  return n;
+end $$;
+
+create function exam.t_login(p_key text) returns jsonb
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare w text:=who(p_key);
+begin
+  return jsonb_build_object('admin',w='*','code',case when w<>'*' then w end);
+end $$;
+
+create function exam.t_rooms(p_key text) returns jsonb
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare w text:=who(p_key);
+begin
+  return coalesce((select jsonb_agg(jsonb_build_object('slug',r.slug,'title',r.title,'code',r.code,'active',r.active,'owner',r.owner,
+      'n',(select count(*) from activities a where a.room=r.slug),
+      'students',(select count(distinct t.email) from attempts t join activities a on a.slug=t.activity where a.room=r.slug)) order by r.slug='library' desc, r.created_at)
+    from rooms r where w='*' or r.owner=w),'[]'::jsonb);
+end $$;
+
+create function exam.t_room_create(p_key text, p_title text, p_code text) returns text
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare w text:=who(p_key); s text; c text;
+begin
+  if coalesce(btrim(p_title),'')='' then raise exception 'Give the room a name'; end if;
+  if w<>'*' and (select count(*) from rooms where owner=w)>=100 then raise exception 'Room limit reached (100)'; end if;
+  c:=room_code_ok(p_code,null); s:=mkslug(p_title);
+  insert into rooms(slug,title,code,owner) values(s,left(btrim(p_title),120),c,nullif(w,'*'));
+  return s;
+end $$;
+
+create function exam.t_room(p_key text, p_room text) returns jsonb
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare r rooms:=own_room(p_key,p_room);
+begin
+  return jsonb_build_object('room',to_jsonb(r),'activities',coalesce((select jsonb_agg(to_jsonb(a)||jsonb_build_object(
+      'nsets',(select count(*) from sets s where s.activity=a.slug),
+      'natt',(select count(*) from attempts t where t.activity=a.slug),
+      'pending',(select count(*) from attempts t where t.activity=a.slug and t.status='finished' and not t.released)) order by a.position,a.created_at)
+    from activities a where a.room=r.slug),'[]'::jsonb));
+end $$;
+
+create function exam.t_room_update(p_key text, p_room text, p jsonb) returns void
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare r rooms:=own_room(p_key,p_room); c text;
+begin
+  if p ? 'code' then c:=room_code_ok(p->>'code',r.slug); end if;
+  update rooms set title=coalesce(left(nullif(btrim(p->>'title'),''),120),title), code=coalesce(c,code),
+    active=case when slug='library' then false else coalesce((p->>'active')::boolean,active) end
+  where slug=r.slug;
+end $$;
+
+create function exam.t_room_delete(p_key text, p_room text) returns void
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare r rooms:=own_room(p_key,p_room);
+begin
+  if r.slug='library' then raise exception 'The exam library cannot be deleted'; end if;
+  delete from rooms where slug=r.slug;
+end $$;
+
+create function exam.t_room_copy(p_key text, p_from text, p_title text, p_code text) returns text
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare w text:=who(p_key); src rooms; s text; c text; a record;
+begin
+  select * into src from rooms where slug=p_from and (w='*' or owner=w);
+  if not found then
+    select * into src from rooms where lower(code)=lower(btrim(coalesce(p_from,''))) and slug<>'library';
+  end if;
+  if not found then raise exception 'No room has that code'; end if;
+  if w<>'*' and (select count(*) from rooms where owner=w)>=100 then raise exception 'Room limit reached (100)'; end if;
+  c:=room_code_ok(p_code,null);
+  s:=mkslug(coalesce(nullif(btrim(p_title),''),src.title));
+  insert into rooms(slug,title,code,owner) values(s,left(coalesce(nullif(btrim(p_title),''),src.title||' (copy)'),120),c,nullif(w,'*'));
+  for a in select slug from activities where room=src.slug order by position,created_at loop
+    perform copy_act(a.slug,s);
+  end loop;
+  return s;
+end $$;
+
+create function exam.t_library(p_key text) returns jsonb
+language plpgsql security definer set search_path=exam,pg_temp as $$
+begin
+  perform who(p_key);
+  return coalesce((select jsonb_agg(jsonb_build_object('slug',a.slug,'title',a.title,'subtitle',a.subtitle,'kind',a.kind,
+      'sets',(select count(*) from sets s where s.activity=a.slug and s.active)) order by a.title)
+    from activities a where a.library),'[]'::jsonb);
+end $$;
+
+create function exam.t_add_library(p_key text, p_room text, p_lib text) returns text
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare r rooms:=own_room(p_key,p_room);
+begin
+  if not exists(select 1 from activities where slug=p_lib and library) then raise exception 'That exam is not in the library'; end if;
+  return copy_act(p_lib,r.slug,(select coalesce(max(position),-1)+1 from activities where room=r.slug));
+end $$;
+
+create function exam.t_act_create(p_key text, p_room text, p_kind text, p_title text, p_settings jsonb) returns text
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare r rooms:=own_room(p_key,p_room); s text;
+begin
+  if coalesce(p_kind,'') !~ '^[a-z][a-z0-9_-]{0,30}$' then raise exception 'Unknown activity type'; end if;
+  s:=mkslug(p_title);
+  insert into activities(slug,room,kind,title,settings,position)
+    values(s,r.slug,p_kind,left(coalesce(nullif(btrim(p_title),''),p_kind),120),coalesce(p_settings,'{}'::jsonb),(select coalesce(max(position),-1)+1 from activities where room=r.slug));
+  return s;
+end $$;
+
+create function exam.t_act(p_key text, p_act text) returns jsonb
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare a activities:=own_act(p_key,p_act);
+begin
+  return to_jsonb(a)||(select jsonb_build_object('room_title',r.title,'room_code',r.code) from rooms r where r.slug=a.room);
+end $$;
+
+create function exam.t_act_update(p_key text, p_act text, p jsonb) returns void
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare a activities:=own_act(p_key,p_act);
+begin
+  if p ? 'assign' and p->>'assign' not in ('random','rotate') then raise exception 'Unknown assignment mode'; end if;
+  update activities set title=coalesce(left(nullif(btrim(p->>'title'),''),120),title),
+    subtitle=case when p ? 'subtitle' then nullif(btrim(p->>'subtitle'),'') else subtitle end,
+    assign=coalesce(p->>'assign',assign), settings=coalesce(p->'settings',settings), active=coalesce((p->>'active')::boolean,active)
+  where slug=a.slug;
+end $$;
+
+create function exam.t_act_delete(p_key text, p_act text) returns void
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare a activities:=own_act(p_key,p_act);
+begin
+  delete from activities where slug=a.slug;
+end $$;
+
+create function exam.t_act_order(p_key text, p_room text, p_slugs jsonb) returns void
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare r rooms:=own_room(p_key,p_room);
+begin
+  for i in 0..coalesce(jsonb_array_length(p_slugs),0)-1 loop
+    update activities set position=i where slug=p_slugs->>i and room=r.slug;
+  end loop;
+end $$;
+
+create function exam.t_sets(p_key text, p_act text) returns jsonb
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare a activities:=own_act(p_key,p_act);
+begin
+  return coalesce((select jsonb_agg(jsonb_build_object('set_id',s.set_id,'label',s.label,'active',s.active,'created_at',s.created_at,
+      'n',jsonb_array_length(s.body->'cards'),
+      'keys',(select count(*) from qkey k where k.activity=s.activity and k.set_id=s.set_id),
+      'att',(select count(*) from attempts t where t.activity=s.activity and t.set_id=s.set_id)) order by s.set_id)
+    from sets s where s.activity=a.slug),'[]'::jsonb);
+end $$;
+
+create function exam.t_set_update(p_key text, p_act text, p_set text, p_active boolean) returns void
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare a activities:=own_act(p_key,p_act);
+begin
+  update sets set active=p_active where activity=a.slug and set_id=p_set;
+end $$;
+
+create function exam.t_set_delete(p_key text, p_act text, p_set text) returns void
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare a activities:=own_act(p_key,p_act);
+begin
+  delete from qkey where activity=a.slug and set_id=p_set;
+  delete from sets where activity=a.slug and set_id=p_set;
+end $$;
+
+create function exam.t_set_get(p_key text, p_act text, p_set text) returns jsonb
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare a activities:=own_act(p_key,p_act);
+begin
+  return (select jsonb_build_object('label',s.label,'body',s.body,
+      'keys',(select coalesce(jsonb_agg(to_jsonb(k)),'[]'::jsonb) from qkey k where k.activity=s.activity and k.set_id=s.set_id))
+    from sets s where s.activity=a.slug and s.set_id=p_set);
+end $$;
+
+create function exam.t_import_set(p_key text, p_act text, p_set text, p_label text, p_body jsonb) returns jsonb
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare a activities:=own_act(p_key,p_act);
+begin
+  if coalesce(btrim(p_set),'') !~ '^[A-Za-z0-9_-]{1,20}$' then raise exception 'Set id must be 1 to 20 letters, digits, - or _'; end if;
+  return import_set(a.slug,btrim(p_set),p_label,p_body);
+end $$;
+
+create function exam.t_attempts(p_key text, p_act text) returns jsonb
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare a activities:=own_act(p_key,p_act);
+begin
+  return coalesce((select jsonb_agg(jsonb_build_object('id',t.id,'email',t.email,'name',t.name,'set_id',t.set_id,'status',t.status,
+      'started_at',t.started_at,'finished_at',t.finished_at,'auto_score',t.auto_score,'auto_max',t.auto_max,'released',t.released,
+      'graded',(select count(*) from grades g where g.attempt_id=t.id),
+      'manual',(select coalesce(sum(score),0) from grades g where g.attempt_id=t.id),
+      'to_grade',(select count(*) from qkey k where k.activity=t.activity and k.set_id=t.set_id and k.kind='manual'),
+      'leaves',(select count(*) from jsonb_array_elements(coalesce(t.state->'ev','[]'::jsonb)) e where e->>1 = any(array['blur','hidden','fs-exit'])))
+      order by t.started_at desc)
+    from attempts t where t.activity=a.slug),'[]'::jsonb);
+end $$;
+
+create function exam.t_release_marked(p_key text, p_act text) returns void
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare a activities:=own_act(p_key,p_act);
+begin
+  update attempts t set released=true where t.activity=a.slug and t.status='finished'
+    and (select count(*) from grades g where g.attempt_id=t.id) >= (select count(*) from qkey k where k.activity=t.activity and k.set_id=t.set_id and k.kind='manual');
+end $$;
+
+create function exam.t_summary(p_key text, p_act text) returns jsonb
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare a activities:=own_act(p_key,p_act);
+begin
+  return jsonb_build_object(
+    'atts',(select coalesce(jsonb_agg(jsonb_build_object('id',id,'set_id',set_id,'auto',auto,'auto_score',auto_score,'auto_max',auto_max,'t',state->'t')),'[]'::jsonb)
+      from attempts where activity=a.slug and status='finished'),
+    'keys',(select coalesce(jsonb_agg(jsonb_build_object('qid',qid,'set_id',set_id,'kind',kind,'ans',ans,'unit',unit,'max',max) order by set_id,seq,qid),'[]'::jsonb)
+      from qkey where activity=a.slug),
+    'grades',(select coalesce(jsonb_agg(jsonb_build_object('q',g.q,'score',g.score,'max',g.max,'set_id',t.set_id)),'[]'::jsonb)
+      from grades g join attempts t on t.id=g.attempt_id where t.activity=a.slug));
+end $$;
+
+create function exam.t_attempt(p_key text, p_id uuid) returns jsonb
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare t attempts:=own_att(p_key,p_id);
+begin
+  return jsonb_build_object(
+    't',(select to_jsonb(t)||jsonb_build_object('title',a.title,'settings',a.settings,'room',a.room,'room_title',r.title)
+      from activities a join rooms r on r.slug=a.room where a.slug=t.activity),
+    'set',(select jsonb_build_object('label',label,'body',body) from sets where activity=t.activity and set_id=t.set_id),
+    'keys',(select coalesce(jsonb_agg(to_jsonb(k)),'[]'::jsonb) from qkey k where k.activity=t.activity and k.set_id=t.set_id),
+    'grades',(select coalesce(jsonb_agg(to_jsonb(g)),'[]'::jsonb) from grades g where g.attempt_id=t.id));
+end $$;
+
+create function exam.t_attempt_release(p_key text, p_id uuid, p_released boolean) returns void
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare t attempts:=own_att(p_key,p_id);
+begin
+  update attempts set released=p_released where id=t.id;
+end $$;
+
+create function exam.t_grade(p_key text, p_id uuid, p_q text, p_score numeric, p_max numeric, p_comment text) returns void
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare t attempts:=own_att(p_key,p_id);
+begin
+  insert into grades(attempt_id,q,score,max,comment) values(t.id,p_q,p_score,p_max,left(p_comment,5000))
+  on conflict(attempt_id,q) do update set score=excluded.score,max=excluded.max,comment=excluded.comment;
+end $$;
+
+create function exam.t_live_put(p_key text, p_act text, p_state jsonb) returns void
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare a activities:=own_act(p_key,p_act);
+begin
+  insert into live(activity,state,updated_at) values(a.slug,p_state,now())
+  on conflict(activity) do update set state=excluded.state, updated_at=now();
+end $$;
+
+create function exam.t_live_get(p_key text, p_act text) returns jsonb
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare a activities:=own_act(p_key,p_act);
+begin
+  return coalesce((select jsonb_build_object('state',l.state,'at',extract(epoch from l.updated_at),'now',extract(epoch from clock_timestamp())) from live l where l.activity=a.slug),
+    jsonb_build_object('state','{}'::jsonb,'at',0,'now',extract(epoch from clock_timestamp())));
+end $$;
+
+create function exam.t_live_events(p_key text, p_act text, p_since bigint) returns jsonb
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare a activities:=own_act(p_key,p_act);
+begin
+  return coalesce((select jsonb_agg(jsonb_build_object('id',e.id,'at',extract(epoch from e.at),'name',e.name,'msg',e.msg) order by e.id)
+    from (select * from live_events where activity=a.slug and id>coalesce(p_since,0) order by id desc limit 200) e),'[]'::jsonb);
+end $$;
+
+create function exam.t_live_post(p_key text, p_act text, p_msg jsonb) returns void
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare a activities:=own_act(p_key,p_act);
+begin
+  insert into live_events(activity,name,msg) values(a.slug,'Teacher',p_msg);
+end $$;
+
+create function exam.t_config(p_key text) returns jsonb
+language plpgsql security definer set search_path=exam,pg_temp as $$
+begin
+  if who(p_key)<>'*' then raise exception 'Only the site owner can change this'; end if;
+  return coalesce((select jsonb_object_agg(key,value) from config),'{}'::jsonb);
+end $$;
+
+create function exam.t_config_set(p_key text, p_name text, p_value text) returns void
+language plpgsql security definer set search_path=exam,pg_temp as $$
+begin
+  if who(p_key)<>'*' then raise exception 'Only the site owner can change this'; end if;
+  insert into config values(p_name,p_value) on conflict(key) do update set value=excluded.value;
+end $$;
+
+create function exam.t_backup(p_key text) returns jsonb
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare w text:=who(p_key); rs text[];
+begin
+  rs:=array(select slug from rooms where w='*' or owner=w);
+  return jsonb_build_object(
+    'rooms',(select coalesce(jsonb_agg(to_jsonb(r)),'[]'::jsonb) from rooms r where slug=any(rs)),
+    'activities',(select coalesce(jsonb_agg(to_jsonb(a)),'[]'::jsonb) from activities a where room=any(rs)),
+    'sets',(select coalesce(jsonb_agg(to_jsonb(s)),'[]'::jsonb) from sets s join activities a on a.slug=s.activity where a.room=any(rs)),
+    'qkey',(select coalesce(jsonb_agg(to_jsonb(k)),'[]'::jsonb) from qkey k join activities a on a.slug=k.activity where a.room=any(rs)),
+    'attempts',(select coalesce(jsonb_agg(to_jsonb(t)),'[]'::jsonb) from attempts t join activities a on a.slug=t.activity where a.room=any(rs)),
+    'grades',(select coalesce(jsonb_agg(to_jsonb(g)),'[]'::jsonb) from grades g join attempts t on t.id=g.attempt_id join activities a on a.slug=t.activity where a.room=any(rs)));
+end $$;
+
 revoke all on schema exam from public;
 revoke all on all tables in schema exam from public;
 revoke execute on all functions in schema exam from public;
@@ -353,6 +741,13 @@ grant execute on function exam.join_room(text), exam.get_set(text,text,text), ex
   exam.my_report(uuid,text,text), exam.leaderboard(text,text,text),
   exam.live_get(text,text), exam.live_post(text,text,text,jsonb), exam.live_events(text,text,bigint),
   exam.claim_code(text,text) to exam_student;
+do $$
+declare r record;
+begin
+  for r in select p.oid::regprocedure::text as sig from pg_proc p where p.pronamespace='exam'::regnamespace and p.proname like 't\_%' loop
+    execute 'grant execute on function ' || r.sig || ' to exam_student';
+  end loop;
+end $$;
 grant execute on all functions in schema exam to exam_teacher;
 grant all on all tables in schema exam to exam_teacher;
 grant all on all sequences in schema exam to exam_teacher;

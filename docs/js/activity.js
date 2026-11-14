@@ -1,4 +1,4 @@
-import { $, el, CFG, user, requireUser, teacherSql, S, toast, topbar } from './core.js';
+import { $, el, CFG, user, requireUser, teacherSql, T, S, toast, topbar } from './core.js';
 import { loadKind, kindInfo } from './activities/index.js';
 
 const params = new URLSearchParams(location.search);
@@ -16,13 +16,11 @@ function fail(message, back) {
 async function loadHost() {
   requireUser('teacher');
   topbar('Dashboard');
-  const q = await teacherSql();
-  const rows = await q`select * from exam.activities where slug=${slug}`;
-  if (!rows.length) return null;
-  const activity = rows[0];
+  let activity;
+  try { activity = await T('act', slug); }
+  catch (e) { if (/not found/i.test(e.message)) return null; throw e; }
   if (activity.kind === 'exam') { location.replace('dashboard.html#act=' + encodeURIComponent(slug)); return false; }
-  const rooms = await q`select slug, title, code from exam.rooms where slug=${activity.room}`;
-  return { u: user(), activity, room: rooms[0] || { slug: activity.room, title: activity.room } };
+  return { u: user(), activity, room: { slug: activity.room, title: activity.room_title, code: activity.room_code } };
 }
 
 async function loadParticipant() {
@@ -79,7 +77,7 @@ async function boot() {
   const ctx = {
     user: u,
     activity: { slug: activity.slug, kind: activity.kind, title: activity.title, subtitle: activity.subtitle, settings },
-    room, S, teacherSql, isHost
+    room, S, T, teacherSql, isHost
   };
   try { await run.call(mod, mount, ctx); }
   catch (e) { toast('The activity failed to start: ' + (e && e.message ? e.message : e)); }

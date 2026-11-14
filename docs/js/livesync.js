@@ -1,4 +1,4 @@
-import { el, toast } from './core.js';
+import { el, toast, T } from './core.js';
 
 export const YT_ID = /^[\w-]{11}$/;
 const AUDIO_EXT = /\.(mp3|m4a|aac|ogg|oga|opus|wav|flac|weba|webm)$/i;
@@ -262,10 +262,9 @@ export function channel(ctx) {
   }
   let lag = 0.08, inflight = null, pending = null;
   async function send(build) {
-    const q = await ctx.teacherSql();
     const state = build(lag);
     const t0 = performance.now();
-    await q`insert into exam.live(activity,state,updated_at) values(${slug}, ${JSON.stringify(state)}::jsonb, now()) on conflict(activity) do update set state=excluded.state, updated_at=now()`;
+    await T('live_put', slug, state);
     lag = Math.min(1, lag * 0.7 + (performance.now() - t0) / 2000 * 0.3);
   }
   return {
@@ -283,22 +282,18 @@ export function channel(ctx) {
       return inflight;
     },
     async read() {
-      const q = await ctx.teacherSql();
       const t0 = Date.now();
-      const r = await q`select state, extract(epoch from updated_at)::float8 as at, extract(epoch from clock_timestamp())::float8 as now from exam.live where activity=${slug}`;
+      const r = (await T('live_get', slug)) || {};
       const t1 = Date.now();
-      if (!r.length) { const n = await q`select extract(epoch from clock_timestamp())::float8 as now`; clock.sample(t0, Date.now(), +n[0].now); return { state: {}, at: 0 }; }
-      clock.sample(t0, t1, +r[0].now);
-      return { state: r[0].state || {}, at: +r[0].at || 0 };
+      clock.sample(t0, t1, +r.now);
+      return { state: r.state || {}, at: +r.at || 0 };
     },
     async events(since) {
-      const q = await ctx.teacherSql();
-      const r = await q`select id::float8 as id, extract(epoch from at)::float8 as at, name, msg from (select * from exam.live_events where activity=${slug} and id>${since || 0} order by id desc limit 200) e order by id`;
+      const r = (await T('live_events', slug, since || 0)) || [];
       return r.map(x => ({ id: +x.id, at: +x.at, name: x.name || '', msg: x.msg || {} }));
     },
     async post(msg) {
-      const q = await ctx.teacherSql();
-      await q`insert into exam.live_events(activity,name,msg) values(${slug}, 'Teacher', ${JSON.stringify(msg)}::jsonb)`;
+      await T('live_post', slug, msg);
     }
   };
 }

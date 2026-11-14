@@ -1,4 +1,4 @@
-import { $, el, esc, requireUser, topbar, teacherSql, fmtDate, fmtDur, num, toast, dialog, confirmBox, typeset } from './core.js';
+import { $, el, esc, requireUser, topbar, T, isAdmin, fmtDate, fmtDur, num, toast, dialog, confirmBox, typeset } from './core.js';
 import { KINDS, kindInfo, loadKind, openUrl } from './activities/index.js';
 import { renderStim } from './figures.js';
 import { viewSub } from './tools/index.js';
@@ -6,9 +6,6 @@ import { viewSub } from './tools/index.js';
 requireUser('teacher');
 topbar('Dashboard');
 const main = $('#main');
-let q;
-
-const slugify = t => (t.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 32) || 'item') + '-' + Math.random().toString(36).slice(2, 6);
 const crumb = (...parts) => el('div', { class: 'mut', style: 'margin-bottom:6px' }, ...parts.flatMap((p, i) => [i ? ' / ' : '', p[1] ? el('a', { href: p[1], text: p[0] }) : p[0]]));
 const joinLink = code => new URL('index.html?room=' + encodeURIComponent(code), location.href).href;
 const download = (name, data) => { const a = el('a', { href: URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })), download: name }); a.click(); };
@@ -16,7 +13,6 @@ const download = (name, data) => { const a = el('a', { href: URL.createObjectURL
 async function route() {
   main.innerHTML = '<p class="mut">Loading…</p>';
   try {
-    q = q || await teacherSql();
     const h = new URLSearchParams(location.hash.slice(1));
     if (h.get('att')) await attempt(h.get('att'));
     else if (h.get('act')) await activity(h.get('act'), h.get('tab') || 'sets');
@@ -26,21 +22,21 @@ async function route() {
   } catch (e) {
     main.innerHTML = '';
     main.append(el('p', { class: 'err', text: e.message }));
-    if (/password|auth/i.test(e.message)) main.append(el('a', { class: 'btn', href: 'index.html?teacher', text: 'Sign in again' }));
+    if (/password|auth|access code/i.test(e.message)) main.append(el('a', { class: 'btn', href: 'index.html?teacher', text: 'Sign in again' }));
   }
   typeset(main);
 }
 
 async function rooms() {
-  const rs = await q`select r.*, (select count(*) from exam.activities a where a.room=r.slug)::int as n,
-    (select count(distinct t.email) from exam.attempts t join exam.activities a on a.slug=t.activity where a.room=r.slug)::int as students
-    from exam.rooms r order by r.created_at`;
+  const rs = await T('rooms');
   main.innerHTML = '';
-  main.append(el('div', { class: 'row' }, el('h1', { text: 'Rooms' }), el('span', { class: 'sp' }), el('a', { class: 'btn', href: '#settings', text: 'Settings' }), el('button', { class: 'pri', text: 'New room', onclick: newRoom })));
-  if (!rs.length) main.append(el('div', { class: 'card', text: 'Create a room, then drop exams, movie nights, DJ sessions and other activities into it. Students join with the room code.' }));
+  main.append(el('div', { class: 'row' }, el('h1', { text: 'Rooms' }), el('span', { class: 'sp' }), el('a', { class: 'btn', href: '#settings', text: 'Settings' }), el('button', { text: 'Copy a room', onclick: () => copyRoom('') }), el('button', { class: 'pri', text: 'New room', onclick: newRoom })));
+  if (!rs.length) main.append(el('div', { class: 'card', text: 'Create a room, then add exams from the library, movie nights, DJ sessions and other activities. Students join free with the room code. To reuse a room someone else set up, use Copy a room with its room code.' }));
   const g = el('div', { class: 'grid' });
   rs.forEach(r => g.append(el('div', { class: 'card' },
-    el('div', { class: 'row' }, el('span', { class: 'chip', text: r.active ? 'Open' : 'Closed' }), el('span', { class: 'chip', text: 'Code ' + r.code })),
+    r.slug === 'library'
+      ? el('div', { class: 'row' }, el('span', { class: 'chip', text: 'Exam library' }), el('span', { class: 'chip', text: 'Every teacher can add these' }))
+      : el('div', { class: 'row' }, el('span', { class: 'chip', text: r.active ? 'Open' : 'Closed' }), el('span', { class: 'chip', text: 'Code ' + r.code }), r.owner && isAdmin() ? el('span', { class: 'chip', text: 'Teacher ' + r.owner.slice(0, 4) + '…' }) : null),
     el('h3', { text: r.title, style: 'margin:4px 0 0' }),
     el('div', { class: 'mut', text: `${r.n} activit${r.n === 1 ? 'y' : 'ies'} · ${r.students} student(s)` }),
     el('span', { class: 'sp' }),
@@ -53,31 +49,38 @@ async function newRoom() {
   if (!title) return;
   const code = await dialog({ title: 'Room code', body: 'Students type this to join. Use something hard to guess.', input: Math.random().toString(36).slice(2, 8), ok: 'Create room' });
   if (!code) return;
-  const slug = slugify(title);
-  try { await q`insert into exam.rooms(slug,title,code) values(${slug},${title.trim()},${code.trim()})`; location.hash = 'room=' + slug; }
-  catch (e) { toast(/unique|duplicate/i.test(e.message) ? 'That room code is already used.' : e.message); }
+  try { location.hash = 'room=' + await T('room_create', title.trim(), code.trim()); }
+  catch (e) { toast(e.message); }
+}
+
+async function copyRoom(from) {
+  if (!from) from = await dialog({ title: 'Copy a room', body: 'Enter the room code of the room to copy. Its activities, question sets and answer keys are copied into a new room of yours. Students and results are not copied.', input: '', ok: 'Next' });
+  if (!from) return;
+  const title = await dialog({ title: 'Name the copy', body: 'Leave blank to reuse the original name.', input: '', ok: 'Next' });
+  if (title == null) return;
+  const code = await dialog({ title: 'Room code for the copy', body: 'Students type this to join. Use something hard to guess.', input: Math.random().toString(36).slice(2, 8), ok: 'Copy room' });
+  if (!code) return;
+  try { location.hash = 'room=' + await T('room_copy', from.trim(), title.trim(), code.trim()); toast('Room copied'); }
+  catch (e) { toast(e.message); }
 }
 
 async function room(slug) {
-  const [r] = await q`select * from exam.rooms where slug=${slug}`;
-  if (!r) throw new Error('Room not found');
-  const acts = await q`select a.*, (select count(*) from exam.sets s where s.activity=a.slug)::int as nsets,
-    (select count(*) from exam.attempts t where t.activity=a.slug)::int as natt,
-    (select count(*) from exam.attempts t where t.activity=a.slug and t.status='finished' and not t.released)::int as pending
-    from exam.activities a where a.room=${slug} order by a.position, a.created_at`;
+  const { room: r, activities: acts } = await T('room', slug);
+  const lib = slug === 'library';
   main.innerHTML = '';
   main.append(crumb(['Rooms', '#'], [r.title]),
     el('div', { class: 'row' }, el('h1', { text: r.title }), el('span', { class: 'sp' }),
-      el('button', { text: 'Rename', onclick: async () => { const t = await dialog({ title: 'Rename room', body: '', input: r.title, ok: 'Save' }); if (t) { await q`update exam.rooms set title=${t} where slug=${slug}`; route(); } } }),
-      el('button', { text: r.active ? 'Close room' : 'Open room', onclick: async () => { await q`update exam.rooms set active=${!r.active} where slug=${slug}`; route(); } }),
-      el('button', { class: 'danger', text: 'Delete', onclick: async () => { if (await confirmBox('Delete this room?', 'All its activities, question sets, attempts and grades are deleted permanently.', 'Delete room', true)) { await q`delete from exam.rooms where slug=${slug}`; location.hash = ''; } } })),
-    el('div', { class: 'card row' },
+      el('button', { text: 'Rename', onclick: async () => { const t = await dialog({ title: 'Rename room', body: '', input: r.title, ok: 'Save' }); if (t) { await T('room_update', slug, { title: t }); route(); } } }),
+      lib ? null : el('button', { text: 'Duplicate', onclick: () => copyRoom(slug) }),
+      lib ? null : el('button', { text: r.active ? 'Close room' : 'Open room', onclick: async () => { await T('room_update', slug, { active: !r.active }); route(); } }),
+      lib ? null : el('button', { class: 'danger', text: 'Delete', onclick: async () => { if (await confirmBox('Delete this room?', 'All its activities, question sets, attempts and grades are deleted permanently.', 'Delete room', true)) { await T('room_delete', slug); location.hash = ''; } } })),
+    lib ? el('div', { class: 'card', text: 'Exams here are published with python publish.py. Every teacher can add them to their rooms, and new sets published here reach their copies too. Students cannot join this room.' }) : el('div', { class: 'card row' },
       el('div', null, el('div', { class: 'mut', text: 'Room code' }), el('b', { text: r.code, style: 'font-size:20px;font-family:ui-monospace,monospace' })),
-      el('button', { text: 'Change code', onclick: async () => { const c = await dialog({ title: 'New room code', body: 'Students already signed in will need the new code.', input: r.code, ok: 'Save' }); if (c) { try { await q`update exam.rooms set code=${c.trim()} where slug=${slug}`; route(); } catch (e) { toast(e.message); } } } }),
+      el('button', { text: 'Change code', onclick: async () => { const c = await dialog({ title: 'New room code', body: 'Students already signed in will need the new code.', input: r.code, ok: 'Save' }); if (c) { try { await T('room_update', slug, { code: c.trim() }); route(); } catch (e) { toast(e.message); } } } }),
       el('span', { class: 'sp' }),
       el('button', { text: 'Copy join link', onclick: () => navigator.clipboard.writeText(joinLink(r.code)).then(() => toast('Join link copied')) })),
-    el('div', { class: 'row' }, el('h2', { text: 'Activities' }), el('span', { class: 'sp' }), el('button', { class: 'pri', text: 'Add activity', onclick: () => addActivity(slug, acts.length) })));
-  if (!acts.length) main.append(el('div', { class: 'card', text: 'Nothing here yet. Add an exam, a movie night, a DJ session or any other activity.' }));
+    el('div', { class: 'row' }, el('h2', { text: 'Activities' }), el('span', { class: 'sp' }), lib ? null : el('button', { text: 'Add exam from library', onclick: () => addFromLibrary(slug) }), el('button', { class: 'pri', text: 'Add activity', onclick: () => addActivity(slug) })));
+  if (!acts.length) main.append(el('div', { class: 'card', text: 'Nothing here yet. Add an exam from the library, a movie night, a DJ session or any other activity.' }));
   acts.forEach((a, i) => {
     const k = kindInfo(a.kind);
     main.append(el('div', { class: 'card row' },
@@ -85,7 +88,7 @@ async function room(slug) {
       el('div', { style: 'flex:1;min-width:200px' }, el('b', { text: a.title }), el('div', { class: 'mut', text: k.label + (a.kind === 'exam' ? ` · ${a.nsets} set(s) · ${a.natt} attempt(s)` + (a.pending ? ` · ${a.pending} to mark` : '') : '') + (a.active ? '' : ' · hidden') })),
       el('button', { text: '↑', title: 'Move up', disabled: i === 0, onclick: () => move(acts, i, -1) }),
       el('button', { text: '↓', title: 'Move down', disabled: i === acts.length - 1, onclick: () => move(acts, i, 1) }),
-      el('button', { text: a.active ? 'Hide' : 'Show', onclick: async () => { await q`update exam.activities set active=${!a.active} where slug=${a.slug}`; route(); } }),
+      el('button', { text: a.active ? 'Hide' : 'Show', onclick: async () => { await T('act_update', a.slug, { active: !a.active }); route(); } }),
       a.kind !== 'exam' ? el('a', { class: 'btn', href: openUrl(a, true), text: 'Host' }) : null,
       el('a', { class: 'btn pri', href: '#act=' + a.slug, text: 'Manage' })));
   });
@@ -93,11 +96,24 @@ async function room(slug) {
 
 async function move(acts, i, d) {
   const list = [...acts]; const [x] = list.splice(i, 1); list.splice(i + d, 0, x);
-  for (let j = 0; j < list.length; j++) await q`update exam.activities set position=${j} where slug=${list[j].slug}`;
+  await T('act_order', list[0].room, list.map(x => x.slug));
   route();
 }
 
-async function addActivity(roomSlug, pos) {
+async function addFromLibrary(roomSlug) {
+  const items = (await T('library')).filter(x => x.kind === 'exam');
+  if (!items.length) { toast('The library has no exams yet.'); return; }
+  const box = el('div', { class: 'grid', style: 'grid-template-columns:1fr' });
+  const pick = await new Promise(res => {
+    items.forEach(x => box.append(el('button', { type: 'button', style: 'text-align:left;justify-content:flex-start;padding:10px', onclick: () => { document.querySelector('.modal').remove(); res(x.slug); } },
+      el('span', { text: '📝', style: 'font-size:22px' }), el('span', null, el('b', { text: x.title }), el('br'), el('span', { class: 'mut', text: (x.subtitle ? x.subtitle + ' · ' : '') + x.sets + ' set(s)' })))));
+    dialog({ title: 'Add an exam from the library', body: box, ok: 'Cancel', cancel: null }).then(() => res(null));
+  });
+  if (!pick) return;
+  try { await T('add_library', roomSlug, pick); toast('Exam added'); route(); } catch (e) { toast(e.message); }
+}
+
+async function addActivity(roomSlug) {
   const pickBox = el('div', { class: 'grid', style: 'grid-template-columns:1fr' });
   const kind = await new Promise(res => {
     Object.entries(KINDS).forEach(([k, v]) => pickBox.append(el('button', { type: 'button', style: 'text-align:left;justify-content:flex-start;padding:10px', onclick: () => { document.querySelector('.modal').remove(); res(k); } },
@@ -109,14 +125,12 @@ async function addActivity(roomSlug, pos) {
   if (!title) return;
   let defaults = {};
   try { defaults = (await loadKind(kind)).defaults?.() || {}; } catch {}
-  const slug = slugify(title);
-  await q`insert into exam.activities(slug,room,kind,title,settings,position) values(${slug},${roomSlug},${kind},${title.trim()},${JSON.stringify(defaults)}::jsonb,${pos})`;
+  const slug = await T('act_create', roomSlug, kind, title.trim(), defaults);
   location.hash = 'act=' + slug + '&tab=settings';
 }
 
 async function activity(slug, tab) {
-  const [a] = await q`select a.*, r.title as room_title from exam.activities a join exam.rooms r on r.slug=a.room where a.slug=${slug}`;
-  if (!a) throw new Error('Activity not found');
+  const a = await T('act', slug);
   const k = kindInfo(a.kind);
   main.innerHTML = '';
   const tabs = a.kind === 'exam' ? [['sets', 'Question sets'], ['attempts', 'Attempts'], ['summary', 'Class summary'], ['settings', 'Settings']] : [['settings', 'Settings']];
@@ -148,29 +162,26 @@ async function settingsTab(a, body) {
   try { const mod = await loadKind(a.kind); if (mod.editor) mod.editor(ed, s, mark); else ed.append(el('p', { class: 'mut', text: 'No settings for this activity.' })); }
   catch { ed.append(el('p', { class: 'mut', text: 'This activity type is not installed on this site.' })); }
   body.append(el('div', { class: 'row' }, saveBtn,
-    el('button', { class: 'danger', text: 'Delete activity', onclick: async () => { if (await confirmBox('Delete ' + a.title + '?', 'Its question sets, attempts and grades are deleted permanently.', 'Delete', true)) { await q`delete from exam.activities where slug=${a.slug}`; location.hash = 'room=' + a.room; } } })));
+    el('button', { class: 'danger', text: 'Delete activity', onclick: async () => { if (await confirmBox('Delete ' + a.title + '?', 'Its question sets, attempts and grades are deleted permanently.', 'Delete', true)) { await T('act_delete', a.slug); location.hash = 'room=' + a.room; } } })));
   saveBtn.onclick = async () => {
-    await q`update exam.activities set title=${title.trim() || a.title}, subtitle=${sub.trim() || null}, assign=${assign}, settings=${JSON.stringify(s)}::jsonb where slug=${a.slug}`;
+    await T('act_update', a.slug, { title: title.trim() || a.title, subtitle: sub.trim(), assign, settings: s });
     dirty = false; saveBtn.disabled = true; toast('Saved');
   };
   window.onbeforeunload = () => dirty ? true : undefined;
 }
 
 async function setsTab(a, body) {
-  const sets = await q`select s.set_id, s.label, s.active, s.created_at, jsonb_array_length(s.body->'cards') as n,
-    (select count(*) from exam.qkey k where k.activity=s.activity and k.set_id=s.set_id)::int as keys,
-    (select count(*) from exam.attempts t where t.activity=s.activity and t.set_id=s.set_id)::int as att
-    from exam.sets s where s.activity=${a.slug} order by s.set_id`;
-  body.append(el('p', { class: 'mut', html: 'Students get one live set each. Add sets with <code>python publish.py</code> or import one below.' }));
+  const sets = await T('sets', a.slug);
+  body.append(el('p', { class: 'mut', text: 'Students get one live set each.' + (a.source ? ' This exam came from the library; new sets published there are added here automatically.' : '') + ' You can also import your own set below.' }));
   if (!sets.length) body.append(el('div', { class: 'card', text: 'No question sets yet. Import one below.' }));
   else {
     const t = el('table', null, el('tr', null, ['Set', 'Label', 'Questions', 'Keys', 'Attempts', 'Status', ''].map(x => el('th', { text: x }))));
     sets.forEach(s => t.append(el('tr', null, el('td', { text: s.set_id }), el('td', { text: s.label }), el('td', { text: s.n }), el('td', { text: s.keys }), el('td', { text: s.att }), el('td', { text: s.active ? 'Live' : 'Hidden' }),
       el('td', { class: 'row' },
         el('button', { text: 'Preview', onclick: () => preview(a, s.set_id) }),
-        el('button', { text: s.active ? 'Hide' : 'Make live', onclick: async () => { await q`update exam.sets set active=${!s.active} where activity=${a.slug} and set_id=${s.set_id}`; route(); } }),
+        el('button', { text: s.active ? 'Hide' : 'Make live', onclick: async () => { await T('set_update', a.slug, s.set_id, !s.active); route(); } }),
         el('button', { text: 'Export', onclick: () => exportSet(a, s.set_id) }),
-        el('button', { class: 'danger', text: 'Delete', onclick: async () => { if (await confirmBox('Delete set ' + s.label + '?', s.att ? `${s.att} attempt(s) used this set; their answers stay, but reports will no longer show the questions.` : 'This cannot be undone.', 'Delete', true)) { await q`delete from exam.qkey where activity=${a.slug} and set_id=${s.set_id}`; await q`delete from exam.sets where activity=${a.slug} and set_id=${s.set_id}`; route(); } } })))));
+        el('button', { class: 'danger', text: 'Delete', onclick: async () => { if (await confirmBox('Delete set ' + s.label + '?', s.att ? `${s.att} attempt(s) used this set; their answers stay, but reports will no longer show the questions.` : 'This cannot be undone.', 'Delete', true)) { await T('set_delete', a.slug, s.set_id); route(); } } })))));
     body.append(el('div', { style: 'overflow-x:auto' }, t));
   }
   const file = el('input', { type: 'file', accept: '.json,application/json', id: 'setfile' });
@@ -187,8 +198,8 @@ async function setsTab(a, body) {
       let body2; try { body2 = JSON.parse(ta.value); } catch (e) { msg.textContent = 'Not valid JSON: ' + e.message; return; }
       const err = validateSet(body2, a.settings); if (err) { msg.textContent = err; return; }
       try {
-        const [r] = await q`select exam.import_set(${a.slug}, ${sid.value.trim()}, ${lab.value.trim()}, ${JSON.stringify(body2)}::jsonb) as r`;
-        toast(`Imported ${r.r.cards} questions and ${r.r.keys} answer keys`); route();
+        const r = await T('import_set', a.slug, sid.value.trim(), lab.value.trim(), body2);
+        toast(`Imported ${r.cards} questions and ${r.keys} answer keys` + (r.copies ? ` · added to ${r.copies} teacher cop${r.copies === 1 ? 'y' : 'ies'}` : '')); route();
       } catch (e) { msg.textContent = e.message; }
     } }), el('button', { text: 'Preview without importing', onclick: () => { try { const b = JSON.parse(ta.value); sessionStorage.preview = JSON.stringify({ activity: { title: a.title, subtitle: a.subtitle, settings: a.settings }, label: lab.value, body: b }); window.open('exam.html?preview=1'); } catch (e) { msg.textContent = 'Not valid JSON: ' + e.message; } } }))));
 }
@@ -209,14 +220,13 @@ function validateSet(b, st) {
 }
 
 async function preview(a, set) {
-  const [s] = await q`select label, body from exam.sets where activity=${a.slug} and set_id=${set}`;
+  const s = await T('set_get', a.slug, set);
   sessionStorage.preview = JSON.stringify({ activity: { title: a.title, subtitle: a.subtitle, settings: a.settings }, set, label: s.label, body: s.body });
   window.open('exam.html?preview=1');
 }
 
 async function exportSet(a, set) {
-  const [s] = await q`select label, body from exam.sets where activity=${a.slug} and set_id=${set}`;
-  const keys = await q`select * from exam.qkey where activity=${a.slug} and set_id=${set}`;
+  const s = await T('set_get', a.slug, set), keys = s.keys;
   const K = Object.fromEntries(keys.map(k => [k.qid, k]));
   const strip = k => { const o = { kind: k.kind, ans: k.ans, tol: k.tol, rationale: k.rationale, dx: k.dx, unit: k.unit, sp: k.sp, lvl: k.lvl, max: +k.max, rubric: k.rubric }; Object.keys(o).forEach(x => o[x] == null && delete o[x]); return o; };
   const body = JSON.parse(JSON.stringify(s.body));
@@ -226,18 +236,13 @@ async function exportSet(a, set) {
 
 const LEAVES = ['blur', 'hidden', 'fs-exit'];
 async function attemptsTab(a, body) {
-  const rows = await q`select t.id, t.email, t.name, t.set_id, t.status, t.started_at, t.finished_at, t.auto_score, t.auto_max, t.released,
-    (select count(*) from exam.grades g where g.attempt_id=t.id)::int as graded,
-    (select coalesce(sum(score),0) from exam.grades g where g.attempt_id=t.id) as manual,
-    (select count(*) from exam.qkey k where k.activity=t.activity and k.set_id=t.set_id and k.kind='manual')::int as to_grade,
-    (select count(*) from jsonb_array_elements(coalesce(t.state->'ev','[]'::jsonb)) e where e->>1 = any(${LEAVES}))::int as leaves
-    from exam.attempts t where t.activity=${a.slug} order by t.started_at desc`;
+  const rows = await T('attempts', a.slug);
   if (!rows.length) { body.append(el('p', { class: 'mut', text: 'No attempts yet.' })); return; }
   const fin = rows.filter(r => r.status === 'finished');
   body.append(el('div', { class: 'row' },
     el('span', { class: 'mut', text: `${rows.length} attempt(s) · ${fin.length} submitted · ${fin.filter(r => !r.released).length} not released` }),
     el('span', { class: 'sp' }),
-    el('button', { text: 'Release all marked', onclick: async () => { await q`update exam.attempts t set released=true where t.activity=${a.slug} and t.status='finished' and (select count(*) from exam.grades g where g.attempt_id=t.id) >= (select count(*) from exam.qkey k where k.activity=t.activity and k.set_id=t.set_id and k.kind='manual')`; route(); } }),
+    el('button', { text: 'Release all marked', onclick: async () => { await T('release_marked', a.slug); route(); } }),
     el('button', { text: 'Export CSV', onclick: () => {
       const csv = [['name', 'email', 'set', 'status', 'started', 'finished', 'auto', 'auto_max', 'teacher', 'released', 'focus_losses'], ...rows.map(r => [r.name, r.email, r.set_id, r.status, r.started_at, r.finished_at, r.auto_score, r.auto_max, r.manual, r.released, r.leaves])]
         .map(r => r.map(x => '"' + String(x ?? '').replace(/"/g, '""') + '"').join(',')).join('\n');
@@ -256,10 +261,8 @@ async function attemptsTab(a, body) {
 }
 
 async function summaryTab(a, body) {
-  const atts = await q`select id, set_id, auto, auto_score, auto_max, state->'t' as t from exam.attempts where activity=${a.slug} and status='finished'`;
+  const { atts, keys, grades } = await T('summary', a.slug);
   if (!atts.length) { body.append(el('p', { class: 'mut', text: 'No submitted attempts yet.' })); return; }
-  const keys = await q`select qid, set_id, kind, ans, unit, max from exam.qkey where activity=${a.slug} order by set_id, seq, qid`;
-  const grades = await q`select g.q, g.score, g.max, t.set_id from exam.grades g join exam.attempts t on t.id=g.attempt_id where t.activity=${a.slug}`;
   const pct = atts.filter(x => x.auto_max > 0).map(x => 100 * x.auto_score / x.auto_max);
   if (pct.length) {
     const bins = Array(10).fill(0); pct.forEach(p => bins[Math.min(9, Math.floor(p / 10))]++);
@@ -290,18 +293,14 @@ async function summaryTab(a, body) {
 }
 
 async function attempt(id) {
-  const [t] = await q`select t.*, a.title, a.settings, a.room, r.title as room_title from exam.attempts t join exam.activities a on a.slug=t.activity join exam.rooms r on r.slug=a.room where t.id=${id}::uuid`;
-  if (!t) throw new Error('Attempt not found');
-  const [s] = await q`select label, body from exam.sets where activity=${t.activity} and set_id=${t.set_id}`;
-  const keys = await q`select * from exam.qkey where activity=${t.activity} and set_id=${t.set_id}`;
-  const grades = await q`select * from exam.grades where attempt_id=${id}::uuid`;
+  const { t, set: s, keys, grades } = await T('attempt', id);
   const K = Object.fromEntries(keys.map(k => [k.qid, k])), G = Object.fromEntries(grades.map(g => [g.q, g]));
   const st = t.state || {}, ans = st.ans || {}, ev = st.ev || [];
   main.innerHTML = '';
   const leaves = ev.filter(e => LEAVES.includes(e[1])).length;
   main.append(crumb(['Rooms', '#'], [t.room_title, '#room=' + t.room], [t.title, '#act=' + t.activity + '&tab=attempts'], [t.name || t.email]),
     el('div', { class: 'row' }, el('h1', { text: t.name || t.email }), el('span', { class: 'sp' }),
-      el('label', { class: 'row', style: 'gap:6px' }, el('input', { type: 'checkbox', checked: t.released, onchange: async e => { await q`update exam.attempts set released=${e.target.checked} where id=${id}::uuid`; toast(e.target.checked ? 'Released to the student' : 'Hidden from the student'); } }), 'Released to student')),
+      el('label', { class: 'row', style: 'gap:6px' }, el('input', { type: 'checkbox', checked: t.released, onchange: async e => { await T('attempt_release', id, e.target.checked); toast(e.target.checked ? 'Released to the student' : 'Hidden from the student'); } }), 'Released to student')),
     el('p', { class: 'mut', text: `${t.email} · Set ${t.set_id} · started ${fmtDate(t.started_at)} · ${t.status === 'finished' ? 'submitted ' + fmtDate(t.finished_at) : 'in progress'} · auto-marked ${t.auto_max ? num(t.auto_score) + '/' + num(t.auto_max) : '–'}` }),
     el('details', { class: 'card' }, el('summary', { text: `Proctoring log · ${leaves} focus loss(es), ${ev.length} events` }),
       el('div', { class: 'mut', style: 'max-height:200px;overflow:auto' }, ev.map(e => el('div', { text: fmtDur(e[0]) + ' · ' + e[1] })))));
@@ -325,7 +324,7 @@ async function attempt(id) {
         const save = async () => {
           if (score.value === '') return;
           const v = Math.max(0, Math.min(max, +score.value));
-          await q`insert into exam.grades(attempt_id,q,score,max,comment) values(${id}::uuid,${qid},${v},${max},${com.value}) on conflict(attempt_id,q) do update set score=excluded.score,max=excluded.max,comment=excluded.comment`;
+          await T('grade', id, qid, v, max, com.value);
           stat.textContent = 'Saved'; stat.className = 'ok';
         };
         score.onchange = save; com.onchange = save;
@@ -341,15 +340,13 @@ async function attempt(id) {
 }
 
 async function settings() {
-  const cfg = Object.fromEntries((await q`select key, value from exam.config`).map(r => [r.key, r.value]));
+  const cfg = isAdmin() ? await T('config') : null;
   main.innerHTML = '';
   main.append(crumb(['Rooms', '#'], ['Settings']), el('h1', { text: 'Settings' }),
-    el('div', { class: 'card' },
-      el('label', { class: 'row', style: 'gap:6px' }, el('input', { type: 'checkbox', checked: cfg.lb_names === 'true', onchange: async e => { await q`insert into exam.config values('lb_names',${String(e.target.checked)}) on conflict(key) do update set value=excluded.value`; toast('Saved'); } }), 'Show full names on leaderboards (otherwise initials)')),
-    el('div', { class: 'card' }, el('h3', { text: 'Backup', style: 'margin-top:0' }), el('p', { class: 'mut', text: 'Download every room, activity, question set, answer key, attempt and grade as JSON.' }),
-      el('button', { text: 'Download backup', onclick: async () => download('exam-hall-backup-' + new Date().toISOString().slice(0, 10) + '.json', {
-        rooms: await q`select * from exam.rooms`, activities: await q`select * from exam.activities`, sets: await q`select * from exam.sets`,
-        qkey: await q`select * from exam.qkey`, attempts: await q`select * from exam.attempts`, grades: await q`select * from exam.grades` }) })));
+    cfg ? el('div', { class: 'card' },
+      el('label', { class: 'row', style: 'gap:6px' }, el('input', { type: 'checkbox', checked: cfg.lb_names === 'true', onchange: async e => { await T('config_set', 'lb_names', String(e.target.checked)); toast('Saved'); } }), 'Show full names on leaderboards (otherwise initials)')) : null,
+    el('div', { class: 'card' }, el('h3', { text: 'Backup', style: 'margin-top:0' }), el('p', { class: 'mut', text: 'Download your rooms, activities, question sets, answer keys, attempts and grades as JSON.' }),
+      el('button', { text: 'Download backup', onclick: async () => download('exam-hall-backup-' + new Date().toISOString().slice(0, 10) + '.json', await T('backup')) })));
 }
 
 window.addEventListener('hashchange', () => { window.onbeforeunload = null; route(); });
