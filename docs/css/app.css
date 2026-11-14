@@ -57,6 +57,11 @@ body.exam{height:100dvh;overflow:hidden;display:flex;flex-direction:column}
 .xf{border-top:1px solid var(--ln)}
 .xh button,.xf button{padding:4px 10px}
 #tm{margin-left:auto;font-weight:700;color:var(--mar);font-variant-numeric:tabular-nums}
+#tm.off{visibility:hidden}
+#app{font-size:calc(var(--z,1)*1em)}
+#lr{position:fixed;pointer-events:none;z-index:15;border-top:2px solid var(--mar);border-bottom:2px solid var(--mar);box-shadow:0 0 0 100vmax rgba(0,0,0,.4)}
+#ref{max-height:70vh;overflow:auto}
+#refb{margin-top:6px;font:14px/1.5 system-ui,sans-serif}
 #app{flex:1;display:grid;grid-template-columns:1fr 1fr;min-height:0}
 #app.one{grid-template-columns:minmax(0,820px);justify-content:center}
 #app.one #L{display:none}

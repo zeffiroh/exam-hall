@@ -123,6 +123,10 @@ alter table exam.activities add column if not exists source text;
 insert into exam.rooms(slug,title,code,active) values('library','Exam library','library-'||md5(random()::text),false) on conflict(slug) do nothing;
 create index if not exists rooms_owner on exam.rooms(owner);
 create index if not exists acts_source on exam.activities(source);
+alter table exam.rooms add column if not exists settings jsonb not null default '{}';
+alter table exam.rooms add column if not exists share_code text;
+create unique index if not exists rooms_share on exam.rooms(lower(share_code)) where share_code is not null;
+alter table exam.access_codes add column if not exists mailed_at timestamptz;
 
 create index if not exists attempts_email on exam.attempts(email);
 create index if not exists attempts_act on exam.attempts(activity,set_id);
@@ -146,6 +150,13 @@ begin
   return r;
 end $$;
 
+create function exam.win_msg(s jsonb) returns text
+language sql stable set search_path=exam,pg_temp as $$
+  select case
+    when nullif(s->>'open_at','') is not null and now()<(s->>'open_at')::timestamptz then 'This is not open yet'
+    when nullif(s->>'close_at','') is not null and now()>=(s->>'close_at')::timestamptz then 'This has closed'
+  end $$;
+
 create function exam.act_ok(p_code text, p_act text) returns void
 language plpgsql security definer set search_path=exam,pg_temp as $$
 begin
@@ -160,7 +171,7 @@ declare r rooms;
 begin
   select * into r from rooms where slug=chk(p_code);
   return jsonb_build_object('room',jsonb_build_object('slug',r.slug,'title',r.title),
-    'activities',coalesce((select jsonb_agg(jsonb_build_object('slug',a.slug,'kind',a.kind,'title',a.title,'subtitle',a.subtitle,'settings',a.settings,
+    'activities',coalesce((select jsonb_agg(jsonb_build_object('slug',a.slug,'kind',a.kind,'title',a.title,'subtitle',a.subtitle,'settings',a.settings,'open',win_msg(a.settings) is null,
       'sets',(select coalesce(jsonb_agg(jsonb_build_object('set_id',s.set_id,'label',s.label) order by s.set_id),'[]'::jsonb) from sets s where s.activity=a.slug and s.active))
       order by a.position,a.created_at) from activities a where a.room=r.slug and a.active),'[]'::jsonb));
 end $$;
@@ -182,6 +193,7 @@ begin
   select * into ac from activities where slug=p_act;
   select * into a from attempts where email=e and activity=p_act and status='in_progress' order by started_at desc limit 1;
   if not found then
+    if win_msg(ac.settings) is not null then raise exception '%', win_msg(ac.settings); end if;
     if p_set is not null and exists(select 1 from sets where activity=p_act and set_id=p_set and active) then
       sid:=p_set;
     elsif ac.assign='rotate' then
@@ -193,7 +205,8 @@ begin
     if sid is null then raise exception 'No question set is available'; end if;
     insert into attempts(email,name,activity,set_id) values(e,p_name,p_act,sid) returning * into a;
   end if;
-  return jsonb_build_object('id',a.id,'activity',a.activity,'set',a.set_id,'state',a.state);
+  return jsonb_build_object('id',a.id,'activity',a.activity,'set',a.set_id,'state',a.state,
+    'mult',coalesce((select (r.settings->'extra'->>e)::numeric from rooms r where r.slug=ac.room),1));
 end $$;
 
 create function exam.save_attempt(p_id uuid,p_email text,p_code text,p_state jsonb) returns void
@@ -260,7 +273,8 @@ end $$;
 
 create function exam.leaderboard(p_email text,p_code text,p_act text) returns jsonb
 language plpgsql security definer set search_path=exam,pg_temp as $$
-declare nm boolean:=coalesce((select value='true' from config where key='lb_names'),false);
+declare nm boolean:=coalesce((select (r.settings->>'lb_names')::boolean from rooms r join activities a on a.room=r.slug where a.slug=p_act),
+  (select value='true' from config where key='lb_names'),false);
 begin
   perform act_ok(p_code,p_act);
   return (with t as (select a.email,a.name,coalesce(a.auto_score,0)+case when a.released then (select coalesce(sum(score),0) from grades g where g.attempt_id=a.id) else 0 end as total,coalesce(a.auto_score,0) auto_score
@@ -409,6 +423,7 @@ declare c text:=btrim(coalesce(p_code,''));
 begin
   if c !~ '^[A-Za-z0-9][A-Za-z0-9_-]{3,39}$' then raise exception 'Room code must be 4 to 40 letters, digits, - or _'; end if;
   if exists(select 1 from rooms where lower(code)=lower(c) and slug is distinct from p_slug)
+     or exists(select 1 from rooms where lower(share_code)=lower(c))
      or exists(select 1 from access_codes where lower(code)=lower(c)) then
     raise exception 'That room code is already used.';
   end if;
@@ -471,11 +486,34 @@ end $$;
 
 create function exam.t_room_update(p_key text, p_room text, p jsonb) returns void
 language plpgsql security definer set search_path=exam,pg_temp as $$
-declare r rooms:=own_room(p_key,p_room); c text;
+declare r rooms:=own_room(p_key,p_room); c text; sc text; ns jsonb;
 begin
   if p ? 'code' then c:=room_code_ok(p->>'code',r.slug); end if;
+  if p ? 'share_code' then
+    sc:=nullif(btrim(coalesce(p->>'share_code','')),'');
+    if sc is not null then
+      if sc !~ '^[A-Za-z0-9][A-Za-z0-9_-]{7,39}$' then raise exception 'Share code must be 8 to 40 letters, digits, - or _'; end if;
+      if exists(select 1 from rooms where lower(code)=lower(sc) or (lower(share_code)=lower(sc) and slug<>r.slug))
+         or exists(select 1 from access_codes where lower(code)=lower(sc)) then
+        raise exception 'That share code is already used.';
+      end if;
+    end if;
+  end if;
+  if p ? 'settings' then
+    ns:=r.settings||coalesce(p->'settings','{}'::jsonb);
+    if ns ? 'extra' then
+      if jsonb_typeof(ns->'extra')<>'object' then raise exception 'Extra time must be a list of emails'; end if;
+      if exists(select 1 from jsonb_each_text(ns->'extra') x where case when x.value ~ '^[0-9]{1,2}(\.[0-9]{1,3})?$' then x.value::numeric not between 1 and 4 else true end) then
+        raise exception 'Extra time must be between 1x and 4x';
+      end if;
+      ns:=jsonb_set(ns,'{extra}',coalesce((select jsonb_object_agg(lower(btrim(x.key)),x.value::numeric) from jsonb_each_text(ns->'extra') x where btrim(x.key)<>''),'{}'::jsonb));
+    end if;
+    if ns ? 'lb_names' and jsonb_typeof(ns->'lb_names') not in ('boolean','null') then raise exception 'Unknown leaderboard setting'; end if;
+  end if;
   update rooms set title=coalesce(left(nullif(btrim(p->>'title'),''),120),title), code=coalesce(c,code),
-    active=case when slug='library' then false else coalesce((p->>'active')::boolean,active) end
+    active=case when slug='library' then false else coalesce((p->>'active')::boolean,active) end,
+    share_code=case when p ? 'share_code' then sc else share_code end,
+    settings=coalesce(ns,settings)
   where slug=r.slug;
 end $$;
 
@@ -493,9 +531,9 @@ declare w text:=who(p_key); src rooms; s text; c text; a record;
 begin
   select * into src from rooms where slug=p_from and (w='*' or owner=w);
   if not found then
-    select * into src from rooms where lower(code)=lower(btrim(coalesce(p_from,''))) and slug<>'library';
+    select * into src from rooms where share_code is not null and lower(share_code)=lower(btrim(coalesce(p_from,''))) and slug<>'library';
   end if;
-  if not found then raise exception 'No room has that code'; end if;
+  if not found then raise exception 'No room has that share code'; end if;
   if w<>'*' and (select count(*) from rooms where owner=w)>=100 then raise exception 'Room limit reached (100)'; end if;
   c:=room_code_ok(p_code,null);
   s:=mkslug(coalesce(nullif(btrim(p_title),''),src.title));
@@ -504,6 +542,25 @@ begin
     perform copy_act(a.slug,s);
   end loop;
   return s;
+end $$;
+
+create function exam.t_gradebook(p_key text, p_room text) returns jsonb
+language plpgsql security definer set search_path=exam,pg_temp as $$
+declare r rooms:=own_room(p_key,p_room);
+begin
+  return jsonb_build_object(
+    'exams',(select coalesce(jsonb_agg(jsonb_build_object('slug',a.slug,'title',a.title) order by a.position,a.created_at),'[]'::jsonb)
+      from activities a where a.room=r.slug and a.kind='exam'),
+    'rows',(select coalesce(jsonb_agg(q.x),'[]'::jsonb) from (
+      select distinct on (t.email,t.activity) jsonb_build_object('email',t.email,'name',t.name,'activity',t.activity,
+        'auto',coalesce(t.auto_score,0),'auto_max',coalesce(t.auto_max,0),
+        'manual',(select coalesce(sum(g.score),0) from grades g where g.attempt_id=t.id),
+        'manual_max',(select coalesce(sum(k.max),0) from qkey k where k.activity=t.activity and k.set_id=t.set_id and k.kind='manual'),
+        'marked',(select count(*) from grades g where g.attempt_id=t.id)>=(select count(*) from qkey k where k.activity=t.activity and k.set_id=t.set_id and k.kind='manual'),
+        'finished_at',t.finished_at) x
+      from attempts t join activities a on a.slug=t.activity
+      where a.room=r.slug and t.status='finished'
+      order by t.email,t.activity,t.finished_at desc) q));
 end $$;
 
 create function exam.t_library(p_key text) returns jsonb

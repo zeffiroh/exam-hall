@@ -33,6 +33,7 @@ export default {
       check('Full-screen proctoring (logs tab switches, blocks copy)', () => s.proctor, v => { s.proctor = v; }),
       check('Lock sections once finished', () => s.lockSections !== false, v => { s.lockSections = v; }),
       field('Instructions shown before starting (HTML, LaTeX allowed)', el('textarea', { rows: 4, oninput: e => { s.intro = e.target.value; onChange(); }, text: s.intro || '' })),
+      field('Reference sheet students can open during the exam (HTML, LaTeX allowed; leave blank for none)', el('textarea', { rows: 4, oninput: e => { s.reference = e.target.value.trim() || undefined; onChange(); }, text: s.reference || '' })),
       field('Figure pack (optional, e.g. apbio)', el('input', { value: s.pack || '', oninput: e => { s.pack = e.target.value.trim() || undefined; onChange(); } })));
   }
 };

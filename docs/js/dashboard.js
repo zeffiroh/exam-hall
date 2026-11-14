@@ -54,7 +54,7 @@ async function newRoom() {
 }
 
 async function copyRoom(from) {
-  if (!from) from = await dialog({ title: 'Copy a room', body: 'Enter the room code of the room to copy. Its activities, question sets and answer keys are copied into a new room of yours. Students and results are not copied.', input: '', ok: 'Next' });
+  if (!from) from = await dialog({ title: 'Copy a room', body: 'Enter the room’s share code (not its student room code). The teacher who owns the room makes one under Room options. Its activities, question sets and answer keys are copied into a new room of yours. Students and results are not copied.', input: '', ok: 'Next' });
   if (!from) return;
   const title = await dialog({ title: 'Name the copy', body: 'Leave blank to reuse the original name.', input: '', ok: 'Next' });
   if (title == null) return;
@@ -79,7 +79,8 @@ async function room(slug) {
       el('button', { text: 'Change code', onclick: async () => { const c = await dialog({ title: 'New room code', body: 'Students already signed in will need the new code.', input: r.code, ok: 'Save' }); if (c) { try { await T('room_update', slug, { code: c.trim() }); route(); } catch (e) { toast(e.message); } } } }),
       el('span', { class: 'sp' }),
       el('button', { text: 'Copy join link', onclick: () => navigator.clipboard.writeText(joinLink(r.code)).then(() => toast('Join link copied')) })),
-    el('div', { class: 'row' }, el('h2', { text: 'Activities' }), el('span', { class: 'sp' }), lib ? null : el('button', { text: 'Add exam from library', onclick: () => addFromLibrary(slug) }), el('button', { class: 'pri', text: 'Add activity', onclick: () => addActivity(slug) })));
+    lib ? null : roomOptions(r),
+    el('div', { class: 'row' }, el('h2', { text: 'Activities' }), el('span', { class: 'sp' }), lib ? null : el('button', { text: 'Gradebook CSV', onclick: () => gradebook(r) }), lib ? null : el('button', { text: 'Add exam from library', onclick: () => addFromLibrary(slug) }), el('button', { class: 'pri', text: 'Add activity', onclick: () => addActivity(slug) })));
   if (!acts.length) main.append(el('div', { class: 'card', text: 'Nothing here yet. Add an exam from the library, a movie night, a DJ session or any other activity.' }));
   acts.forEach((a, i) => {
     const k = kindInfo(a.kind);
@@ -92,6 +93,70 @@ async function room(slug) {
       a.kind !== 'exam' ? el('a', { class: 'btn', href: openUrl(a, true), text: 'Host' }) : null,
       el('a', { class: 'btn pri', href: '#act=' + a.slug, text: 'Manage' })));
   });
+}
+
+const csvOf = rows => rows.map(r => r.map(x => '"' + String(x ?? '').replace(/"/g, '""') + '"').join(',')).join('\n');
+const saveCsv = (name, rows) => el('a', { href: URL.createObjectURL(new Blob(['﻿' + csvOf(rows)], { type: 'text/csv' })), download: name }).click();
+
+function roomOptions(r) {
+  const st = r.settings || {}, extra = { ...(st.extra || {}) };
+  const upd = async p => { try { await T('room_update', r.slug, p); toast('Saved'); return true; } catch (e) { toast(e.message); return false; } };
+  const lb = el('select', { onchange: () => upd({ settings: { lb_names: lb.value === '' ? null : lb.value === 'true' } }) },
+    [['', 'Site default'], ['true', 'Full names'], ['false', 'Initials only']].map(([v, t]) => el('option', { value: v, text: t, selected: String(st.lb_names ?? '') === v })));
+  const share = el('div', { class: 'row' },
+    el('div', null, el('div', { class: 'mut', text: 'Share code for copying this room' }), el('b', { text: r.share_code || 'None', style: 'font-family:ui-monospace,monospace' })),
+    el('button', { text: r.share_code ? 'New share code' : 'Make share code', onclick: async () => { if (await upd({ share_code: 'share-' + crypto.getRandomValues(new Uint32Array(2)).reduce((s, x) => s + x.toString(36), '') })) route(); } }),
+    r.share_code ? el('button', { text: 'Copy', onclick: () => navigator.clipboard.writeText(r.share_code).then(() => toast('Share code copied')) }) : null,
+    r.share_code ? el('button', { text: 'Turn off', onclick: async () => { if (await upd({ share_code: null })) route(); } }) : null);
+  const list = el('div');
+  const drawExtra = () => {
+    list.innerHTML = '';
+    const ks = Object.keys(extra).sort();
+    if (!ks.length) list.append(el('p', { class: 'mut', text: 'No students have extra time.' }));
+    ks.forEach(k => list.append(el('div', { class: 'row', style: 'margin:3px 0' }, el('span', { text: k, style: 'flex:1' }), el('b', { text: extra[k] + '×' }),
+      el('button', { text: 'Remove', onclick: async () => { const v = extra[k]; delete extra[k]; if (await upd({ settings: { extra } })) drawExtra(); else extra[k] = v; } }))));
+  };
+  drawExtra();
+  const em = el('input', { type: 'email', placeholder: 'student@school.org', 'aria-label': 'Student email', style: 'flex:1;min-width:200px' });
+  const mu = el('select', { 'aria-label': 'Time multiplier' }, ['1.25', '1.5', '2', '2.5', '3'].map(v => el('option', { value: v, text: v + '×', selected: v === '1.5' })));
+  const add = async () => {
+    const k = em.value.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(k)) { toast('Enter the email the student signs in with.'); return; }
+    extra[k] = +mu.value;
+    if (await upd({ settings: { extra } })) { em.value = ''; drawExtra(); } else delete extra[k];
+  };
+  return el('details', { class: 'card' }, el('summary', { text: 'Room options · leaderboard names, share code, extra time' }),
+    el('label', { class: 'field' }, 'Names on this room’s leaderboards', lb),
+    el('hr'), share,
+    el('p', { class: 'mut', text: 'Other teachers need the share code, not the room code, to copy this room and its answer keys. Making a new code stops the old one working.' }),
+    el('hr'), el('b', { text: 'Extra time' }),
+    el('p', { class: 'mut', text: 'Every section timer is multiplied for these students. It applies to exams they start or resume after you save.' }),
+    list, el('div', { class: 'row' }, em, mu, el('button', { text: 'Add', onclick: add })));
+}
+
+async function gradebook(r) {
+  const { exams, rows } = await T('gradebook', r.slug);
+  if (!rows.length) { toast('No submitted exams in this room yet.'); return; }
+  const by = {};
+  rows.forEach(x => { const s = by[x.email] = by[x.email] || { name: x.name, email: x.email, g: {} }; s.g[x.activity] = x; if (x.name) s.name = x.name; });
+  const head = ['name', 'email'];
+  exams.forEach(e => head.push(e.title + ' · score', e.title + ' · out of', e.title + ' · %'));
+  head.push('total', 'total out of', 'total %', 'not fully marked');
+  const out = [head];
+  Object.values(by).sort((p, q) => (p.name || p.email).localeCompare(q.name || q.email)).forEach(s => {
+    let sc = 0, mx = 0; const open = [];
+    const row = [s.name, s.email];
+    exams.forEach(e => {
+      const x = s.g[e.slug];
+      if (!x) { row.push('', '', ''); return; }
+      const a = +x.auto + +x.manual, b = +x.auto_max + +x.manual_max;
+      sc += a; mx += b; if (!x.marked) open.push(e.title);
+      row.push(num(a), num(b), b ? Math.round(1000 * a / b) / 10 : '');
+    });
+    row.push(num(sc), num(mx), mx ? Math.round(1000 * sc / mx) / 10 : '', open.join('; '));
+    out.push(row);
+  });
+  saveCsv(r.slug + '-gradebook.csv', out);
 }
 
 async function move(acts, i, d) {
@@ -157,6 +222,11 @@ async function settingsTab(a, body) {
   if (a.kind === 'exam') body.append(el('label', { class: 'field' }, 'How students get a question set', el('select', { onchange: e => { assign = e.target.value; mark(); } },
     el('option', { value: 'random', text: 'Random set for each student', selected: assign === 'random' }),
     el('option', { value: 'rotate', text: 'Rotate so sets are used evenly', selected: assign === 'rotate' }))));
+  const loc = iso => { if (!iso) return ''; const d = new Date(iso); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 16); };
+  const when = key => el('input', { type: 'datetime-local', value: loc(s[key]), onchange: e => { if (e.target.value) s[key] = new Date(e.target.value).toISOString(); else delete s[key]; mark(); } });
+  body.append(el('div', { class: 'card' }, el('b', { text: 'Availability window' }),
+    el('p', { class: 'mut', text: 'Leave blank to control it only with Show / Hide. Students can’t start outside the window; anyone already in progress can finish.' + (a.kind === 'exam' ? '' : ' For this activity type the window only changes what students see in the room.') }),
+    el('div', { class: 'row' }, el('label', { class: 'field' }, 'Opens', when('open_at')), el('label', { class: 'field' }, 'Closes', when('close_at')))));
   const ed = el('div', { class: 'card' });
   body.append(ed);
   try { const mod = await loadKind(a.kind); if (mod.editor) mod.editor(ed, s, mark); else ed.append(el('p', { class: 'mut', text: 'No settings for this activity.' })); }
@@ -164,6 +234,7 @@ async function settingsTab(a, body) {
   body.append(el('div', { class: 'row' }, saveBtn,
     el('button', { class: 'danger', text: 'Delete activity', onclick: async () => { if (await confirmBox('Delete ' + a.title + '?', 'Its question sets, attempts and grades are deleted permanently.', 'Delete', true)) { await T('act_delete', a.slug); location.hash = 'room=' + a.room; } } })));
   saveBtn.onclick = async () => {
+    if (s.open_at && s.close_at && Date.parse(s.close_at) <= Date.parse(s.open_at)) { toast('The closing time must be after the opening time.'); return; }
     await T('act_update', a.slug, { title: title.trim() || a.title, subtitle: sub.trim(), assign, settings: s });
     dirty = false; saveBtn.disabled = true; toast('Saved');
   };
@@ -344,7 +415,7 @@ async function settings() {
   main.innerHTML = '';
   main.append(crumb(['Rooms', '#'], ['Settings']), el('h1', { text: 'Settings' }),
     cfg ? el('div', { class: 'card' },
-      el('label', { class: 'row', style: 'gap:6px' }, el('input', { type: 'checkbox', checked: cfg.lb_names === 'true', onchange: async e => { await T('config_set', 'lb_names', String(e.target.checked)); toast('Saved'); } }), 'Show full names on leaderboards (otherwise initials)')) : null,
+      el('label', { class: 'row', style: 'gap:6px' }, el('input', { type: 'checkbox', checked: cfg.lb_names === 'true', onchange: async e => { await T('config_set', 'lb_names', String(e.target.checked)); toast('Saved'); } }), 'Show full names on leaderboards by default (each room can override this in Room options)')) : null,
     el('div', { class: 'card' }, el('h3', { text: 'Backup', style: 'margin-top:0' }), el('p', { class: 'mut', text: 'Download your rooms, activities, question sets, answer keys, attempts and grades as JSON.' }),
       el('button', { text: 'Download backup', onclick: async () => download('exam-hall-backup-' + new Date().toISOString().slice(0, 10) + '.json', await T('backup')) })));
 }

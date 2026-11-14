@@ -98,6 +98,15 @@ Share scores, request new exams and swap study tips on **[Reddit](https://www.re
    ```
 After paying, the teacher lands on `unlock.html`, which releases one code for their payment ID (`pay_…`). If the redirect doesn't carry the ID, they paste it from their Razorpay receipt email. Entering the same ID again shows the same code. The site has no server, so it can't confirm a payment with Razorpay. Now and then, compare `--codes` with your Razorpay payments and revoke any code with no matching payment.
 
+#### Emailing codes automatically
+`.github/workflows/mail-codes.yml` runs `mail_codes.py` every 15 minutes. It reads captured payments from the Razorpay API, gives each buyer a code (the same code `unlock.html` shows for that payment ID), and emails it to the address on the payment. Each payment is emailed once.
+
+1. In the repo, open **Settings → Secrets and variables → Actions** and add these secrets: `TEACHER_PASSWORD`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` (Razorpay → Account & Settings → API keys), `SMTP_HOST`, `SMTP_PORT` (465 or 587), `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`. For Gmail use `smtp.gmail.com`, port 465 and an app password.
+2. Add a **variable** `SITE_URL`, for example `https://you.github.io/exam-hall`.
+3. Run `schema.sql` again, then start the workflow once from the Actions tab to test it. `python mail_codes.py --dry-run` does the same locally with the values in `.env`.
+
+GitHub can run scheduled workflows late when it is busy, so allow up to half an hour. Buyers can still get their code straight away on `unlock.html`.
+
 ### Community links
 Set `community.reddit` and `community.discord` in `docs/js/config.js` to show them on the site, and replace `YOUR_SUBREDDIT`, `YOUR_INVITE` and `YOUR_SERVER_ID` above for the badges.
 

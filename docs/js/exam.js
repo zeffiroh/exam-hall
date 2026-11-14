@@ -10,7 +10,10 @@ if (!PREVIEW && (!me || me.role !== 'student' || !ACT)) location.href = 'index.h
 
 let A = null, CARDS = [], SECS = [], SET = null, AID = null, pack = null;
 let ST = { ans: {}, t: {}, ev: [], note: {}, hl: {}, flag: {}, x: {}, xm: false, done: false, sec: 0, s: {}, cur: {} };
-let cur = 0, dirty = false, live = false, charts = [], warned = {};
+let cur = 0, dirty = false, live = false, charts = [], warned = {}, MULT = 1, OPTS = [];
+const ZOOM = [0.9, 1, 1.15, 1.3, 1.5, 1.75];
+let zi = 1;
+try { zi = Math.max(0, Math.min(ZOOM.length - 1, +(localStorage.ez ?? 1))); } catch {}
 
 const sec = () => SECS[ST.sec];
 const inSec = () => CARDS.filter(c => c.sec === sec().id);
@@ -51,11 +54,20 @@ async function load() {
       (st.lockSections !== false && SECS.length > 1 ? '<p>Once you move on to the next section you cannot return to the previous one.</p>' : '') +
       (st.proctor ? '<p>The exam runs in full screen. Leaving full screen or switching tabs is recorded for your teacher.</p>' : '') +
       '<p>Answers save automatically. ' + (tools.length ? 'Tools: ' + tools.join(', ') + '.' : '') + '</p>' +
+      '<p class="mut">Keyboard: A–E choose an answer · Shift+A–E cross one out · ← → move between questions · F flag for review.</p>' +
+      (A.open === false ? '<p class="err">' + esc(winText(st) || 'This exam is not open right now.') + ' You can resume an exam you already started.</p>' : '') +
       (A.sets && A.sets.length > 1 ? `<p>This exam has ${A.sets.length} versions; you will be given one of them.</p>` : '');
     await typeset($('#intro'));
     $('#go').disabled = false;
     $('#go').textContent = 'Begin';
   } catch (e) { $('#ierr').textContent = e.message; }
+}
+
+function winText(st) {
+  const f = d => new Date(d).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  if (st.open_at && Date.now() < Date.parse(st.open_at)) return 'Opens ' + f(st.open_at) + '.';
+  if (st.close_at && Date.now() >= Date.parse(st.close_at)) return 'Closed ' + f(st.close_at) + '.';
+  return '';
 }
 
 async function begin() {
@@ -64,6 +76,7 @@ async function begin() {
     if (!PREVIEW) {
       const a = await S.start(me, ACT, null);
       AID = a.id;
+      MULT = Math.max(1, +a.mult || 1);
       const got = await S.getSet(me, ACT, a.set);
       SET = got.set;
       Object.assign(ST, a.state || {});
@@ -74,6 +87,7 @@ async function begin() {
     CARDS.forEach(c => { if (!c.sec) c.sec = SECS[0].id; });
     if (ST.done) { showDone(); return; }
     ST.name = me.name; ST.email = me.email; ST.set = SET.set_id;
+    if (MULT > 1) ST.mult = MULT;
     if (typeof ST.sec !== 'number' || !SECS[ST.sec]) ST.sec = 0;
     while (ST.sec < SECS.length - 1 && !inSec().length) ST.sec++;
     if (!ST.s[sec().id]) ST.s[sec().id] = Date.now();
@@ -83,6 +97,9 @@ async function begin() {
     $('#who').textContent = me.name;
     $('#bCalc').hidden = !(A.settings?.tools?.calc);
     $('#bNotes').hidden = A.settings?.tools?.notes === false;
+    $('#bRef').hidden = !A.settings?.reference;
+    paintTimer(); zoom(0);
+    if (MULT > 1) toast('Extra time applied: ' + MULT + '× on every section');
     if (A.settings?.proctor && !PREVIEW) document.documentElement.requestFullscreen?.().catch(() => {});
     drawSecs();
     show(Math.max(0, CARDS.indexOf(inSec().find(c => c.id === ST.cur[sec().id]) || inSec()[0])));
@@ -132,6 +149,7 @@ async function show(i) {
   R.append(el('h2', { text: label(c), style: 'margin-top:0' }));
   if (c.stem) R.append(el('div', { class: 'stem', html: c.stem }));
   R.classList.toggle('xm', !!ST.xm);
+  OPTS = [];
   if (c.type === 'mcq') {
     const xs = new Set(ST.x[c.id] || []);
     const keepX = () => { if (xs.size) ST.x[c.id] = [...xs].sort((p, q) => p - q); else delete ST.x[c.id]; dirty = true; };
@@ -163,6 +181,7 @@ async function show(i) {
       };
       lab.append(r, el('span', { html: o }));
       paint();
+      OPTS.push({ pick: () => { if (!r.checked) { r.checked = true; r.dispatchEvent(new Event('change')); } }, cross: () => { if (!ST.xm) tog.click(); xb.click(); } });
       R.append(el('div', { class: 'oprow' }, lab, xb));
     });
   } else if (c.type === 'num' || c.type === 'short') {
@@ -182,14 +201,19 @@ async function show(i) {
   typeset(R);
 }
 
+function step(d) {
+  const list = inSec(), q = list[list.indexOf(CARDS[cur]) + d];
+  if (q) show(CARDS.indexOf(q));
+}
+
 function drawNav() {
   const n = $('#nav'), list = inSec(), p = list.indexOf(CARDS[cur]);
   n.innerHTML = '';
   const b = (t, f, cls) => el('button', { text: t, onclick: f, class: cls || '' });
   n.append(
-    b('◀ Back', () => p > 0 && show(CARDS.indexOf(list[p - 1]))),
+    b('◀ Back', () => step(-1)),
     b(`Question ${p + 1} of ${list.length} ▾`, () => { $('#nv').hidden = !$('#nv').hidden; drawGrid(); }),
-    b('Next ▶', () => p < list.length - 1 && show(CARDS.indexOf(list[p + 1]))),
+    b('Next ▶', () => step(1)),
     el('label', { class: 'mut' }, el('input', { type: 'checkbox', checked: !!ST.flag[CARDS[cur].id], onchange: e => { ST.flag[CARDS[cur].id] = e.target.checked; touch(); } }), ' Flag for review'),
     el('span', { class: 'sp' }),
     el('span', { class: 'mut', text: list.filter(done).length + '/' + list.length + ' answered' }),
@@ -213,10 +237,14 @@ function tick() {
   if (ST.done || !live) return;
   const c = CARDS[cur];
   if (c && !document.hidden) ST.t[c.id] = (ST.t[c.id] || 0) + 1;
-  const s = sec(), left = s.minutes * 60 - Math.floor((Date.now() - ST.s[s.id]) / 1000);
+  const s = sec(), mins = s.minutes * MULT, left = Math.round(mins * 60) - Math.floor((Date.now() - ST.s[s.id]) / 1000);
   const m = Math.max(0, left);
   $('#tm').textContent = 'Time left ' + Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0');
-  for (const w of [30, 10, 5, 1]) if (left <= w * 60 && left > w * 60 - 2 && !warned[s.id + w] && s.minutes > w) { warned[s.id + w] = 1; toast(w + (w === 1 ? ' minute' : ' minutes') + ' left in this section'); }
+  for (const w of [30, 10, 5, 1]) if (left <= w * 60 && left > w * 60 - 2 && !warned[s.id + w] && mins > w) {
+    warned[s.id + w] = 1;
+    if (w === 5 && ST.hideT) { ST.hideT = false; dirty = true; paintTimer(); }
+    toast(w + (w === 1 ? ' minute' : ' minutes') + ' left in this section');
+  }
   if (left <= 0) { if (ST.sec < SECS.length - 1) { toast('Time is up for ' + s.title); goSec(ST.sec + 1, true); } else finish(true); }
 }
 
@@ -285,9 +313,47 @@ function applyHl() {
   }
 }
 
+function paintTimer() {
+  $('#tm').classList.toggle('off', !!ST.hideT);
+  $('#bTm').textContent = ST.hideT ? 'Show timer' : 'Hide timer';
+  $('#bTm').setAttribute('aria-pressed', String(!!ST.hideT));
+}
+$('#bTm').onclick = () => { ST.hideT = !ST.hideT; dirty = true; paintTimer(); };
+
+function zoom(d) {
+  zi = Math.max(0, Math.min(ZOOM.length - 1, zi + d));
+  $('#app').style.setProperty('--z', ZOOM[zi]);
+  $('#bZo').disabled = zi === 0; $('#bZi').disabled = zi === ZOOM.length - 1;
+  try { localStorage.ez = zi; } catch {}
+  if (lrOn) $('#lr').hidden = true;
+}
+$('#bZo').onclick = () => zoom(-1);
+$('#bZi').onclick = () => zoom(1);
+
+let lrOn = false;
+$('#bLr').onclick = () => {
+  lrOn = !lrOn;
+  $('#bLr').classList.toggle('on', lrOn); $('#bLr').setAttribute('aria-pressed', String(lrOn));
+  if (!lrOn) $('#lr').hidden = true;
+};
+$('#app').addEventListener('mousemove', e => {
+  if (!lrOn) return;
+  const s = e.target.closest?.('#app>section'); if (!s) return;
+  const r = s.getBoundingClientRect(), h = 2.4 * 15 * ZOOM[zi], lr = $('#lr');
+  Object.assign(lr.style, { left: r.left + 'px', width: r.width + 'px', height: h + 'px', top: Math.max(r.top, Math.min(r.bottom - h, e.clientY - h / 2)) + 'px' });
+  lr.hidden = false;
+});
+$('#app').addEventListener('mouseleave', () => { $('#lr').hidden = true; });
+
+$('#bRef').onclick = () => {
+  const p = $('#ref');
+  if (p.hidden && !$('#refb').childNodes.length) { $('#refb').innerHTML = A.settings.reference; typeset($('#refb')); }
+  p.hidden = !p.hidden; $('#notes').hidden = $('#calc').hidden = true;
+};
+
 $('#nt').oninput = e => { ST.note[CARDS[cur].id] = e.target.value; dirty = true; };
-$('#bNotes').onclick = () => { $('#notes').hidden = !$('#notes').hidden; $('#calc').hidden = true; };
-$('#bCalc').onclick = () => { $('#calc').hidden = !$('#calc').hidden; $('#notes').hidden = true; drawG(); };
+$('#bNotes').onclick = () => { $('#notes').hidden = !$('#notes').hidden; $('#calc').hidden = $('#ref').hidden = true; };
+$('#bCalc').onclick = () => { $('#calc').hidden = !$('#calc').hidden; $('#notes').hidden = $('#ref').hidden = true; drawG(); };
 $('#bTheme').onclick = () => { toggleTheme(); if (live) show(cur); };
 $('#go').onclick = begin;
 $('#refs').onclick = () => { document.documentElement.requestFullscreen?.().catch(() => {}); $('#fsw').hidden = true; };
@@ -352,7 +418,14 @@ document.addEventListener('fullscreenchange', () => {
 }));
 document.addEventListener('keydown', e => {
   if (live && !ST.done && A?.settings?.proctor && (e.ctrlKey || e.metaKey) && 'ps'.includes(e.key.toLowerCase())) { e.preventDefault(); log('key-' + e.key.toLowerCase()); }
-  if (e.key === 'Escape') { $('#nv').hidden = true; $('#hb').hidden = true; }
+  if (e.key === 'Escape') { $('#nv').hidden = true; $('#hb').hidden = true; $('#ref').hidden = true; }
+  if (!live || ST.done || e.ctrlKey || e.metaKey || e.altKey || e.repeat || document.querySelector('.modal')) return;
+  if (e.target.closest?.('input:not([type=radio]):not([type=checkbox]),textarea,select,[contenteditable],.sub,.pop')) return;
+  const k = e.key.toLowerCase();
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); step(e.key === 'ArrowLeft' ? -1 : 1); return; }
+  if (k === 'f' && !e.shiftKey) { const id = CARDS[cur].id; ST.flag[id] = !ST.flag[id]; touch(); toast(ST.flag[id] ? 'Flagged for review' : 'Flag removed', 1500); return; }
+  const i = 'abcde'.indexOf(k);
+  if (k.length === 1 && i >= 0 && OPTS[i]) { e.preventDefault(); e.shiftKey ? OPTS[i].cross() : OPTS[i].pick(); }
 });
 window.addEventListener('beforeunload', e => { if (live && !ST.done && !PREVIEW) { if (dirty) save(); e.preventDefault(); e.returnValue = ''; } });
 

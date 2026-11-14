@@ -38,18 +38,28 @@ async function home() {
     const mine = atts.filter(x => x.activity === a.slug);
     const open = mine.find(x => x.status === 'in_progress'), fin = mine.filter(x => x.status === 'finished');
     const status = a.kind !== 'exam' ? '' : open ? 'In progress' : fin.length ? `Submitted ${fin.length}×` : 'Not started';
+    const shut = a.open === false && !open, win = windowText(a.settings);
     grid.append(el('div', { class: 'card' },
       el('div', { class: 'row' }, el('span', { text: k.icon, style: 'font-size:22px', 'aria-hidden': 'true' }), el('span', { class: 'chip', text: k.label }), status ? el('span', { class: 'chip', text: status }) : null),
       el('h3', { text: a.title, style: 'margin:4px 0 0' }),
       a.subtitle ? el('div', { class: 'mut', text: a.subtitle }) : null,
       a.kind === 'exam' ? el('div', { class: 'mut', text: (a.settings.sections || []).map(s => s.minutes).reduce((x, y) => x + y, 0) + ' minutes' + (a.sets.length > 1 ? ' · ' + a.sets.length + ' versions' : '') }) : el('div', { class: 'mut', text: k.blurb }),
+      win ? el('div', { class: 'mut', text: win }) : null,
       el('span', { class: 'sp' }),
       el('div', { class: 'row' },
-        a.kind === 'exam' && !a.sets.length ? el('span', { class: 'mut', text: 'No questions yet' })
+        shut ? el('span', { class: 'chip', text: a.settings.open_at && Date.now() < Date.parse(a.settings.open_at) ? 'Not open yet' : 'Closed' })
+        : a.kind === 'exam' && !a.sets.length ? el('span', { class: 'mut', text: 'No questions yet' })
           : el('a', { class: 'btn pri', href: openUrl(a), text: a.kind === 'exam' ? (open ? 'Resume' : fin.length ? 'Take again' : 'Start') : 'Open' }),
         a.kind === 'exam' && fin.length ? el('a', { class: 'btn', href: '#lb=' + encodeURIComponent(a.slug), text: 'Leaderboard' }) : null)));
   }
   main.append(grid);
+}
+
+function windowText(s) {
+  const f = d => new Date(d).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  if (!s?.open_at && !s?.close_at) return '';
+  if (s.open_at && s.close_at) return 'Available ' + f(s.open_at) + ' – ' + f(s.close_at);
+  return s.open_at ? 'Opens ' + f(s.open_at) : 'Closes ' + f(s.close_at);
 }
 
 async function results() {
